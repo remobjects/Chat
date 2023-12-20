@@ -406,7 +406,7 @@ type
 
     method PemToDer(aKeyData: String): array of Byte;
     begin
-      aKeyData := aKeyData.Trim
+      aKeyData := aKeyData.trim
                           .SubstringFromFirstOccurrenceOf(#10)
                           .SubstringToLastOccurrenceOf(#10)
                           .Replace(#13, "")
