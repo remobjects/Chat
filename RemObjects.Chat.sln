@@ -1,0 +1,38 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# RemObjects Fire
+Project("{656346d9-4656-40da-a068-22d5425d4639}") = "ChatTestClient", "ChatTestClient\ChatTestClient.elements", "{a44b8301-e4f6-4333-b7db-79c4808d52b8}"
+EndProject
+Project("{656346d9-4656-40da-a068-22d5425d4639}") = "RemObjects.Chat", "RemObjects.Chat\RemObjects.Chat.elements", "{feaa7193-a5a7-4cff-935f-a8a0906765c7}"
+EndProject
+Project("{656346d9-4656-40da-a068-22d5425d4639}") = "RemObjects.Chat.Client", "RemObjects.Chat.Client\RemObjects.Chat.Client.elements", "{f121ac70-65f7-4aad-a1d3-5ca67acfde59}"
+EndProject
+Project("{656346d9-4656-40da-a068-22d5425d4639}") = "RemObjects.Chat.Server", "RemObjects.Chat.Server\RemObjects.Chat.Server.elements", "{3ef15611-550a-4a28-9d8a-2af4ed9e72a9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|AnyCPU = Debug|AnyCPU
+		Release|AnyCPU = Release|AnyCPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{a44b8301-e4f6-4333-b7db-79c4808d52b8}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
+		{a44b8301-e4f6-4333-b7db-79c4808d52b8}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
+		{a44b8301-e4f6-4333-b7db-79c4808d52b8}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
+		{a44b8301-e4f6-4333-b7db-79c4808d52b8}.Release|AnyCPU.Build.0 = Release|AnyCPU
+		{feaa7193-a5a7-4cff-935f-a8a0906765c7}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
+		{feaa7193-a5a7-4cff-935f-a8a0906765c7}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
+		{feaa7193-a5a7-4cff-935f-a8a0906765c7}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
+		{feaa7193-a5a7-4cff-935f-a8a0906765c7}.Release|AnyCPU.Build.0 = Release|AnyCPU
+		{f121ac70-65f7-4aad-a1d3-5ca67acfde59}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
+		{f121ac70-65f7-4aad-a1d3-5ca67acfde59}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
+		{f121ac70-65f7-4aad-a1d3-5ca67acfde59}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
+		{f121ac70-65f7-4aad-a1d3-5ca67acfde59}.Release|AnyCPU.Build.0 = Release|AnyCPU
+		{3ef15611-550a-4a28-9d8a-2af4ed9e72a9}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
+		{3ef15611-550a-4a28-9d8a-2af4ed9e72a9}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
+		{3ef15611-550a-4a28-9d8a-2af4ed9e72a9}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
+		{3ef15611-550a-4a28-9d8a-2af4ed9e72a9}.Release|AnyCPU.Build.0 = Release|AnyCPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

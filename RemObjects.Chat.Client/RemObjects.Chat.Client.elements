@@ -3,15 +3,13 @@
   <PropertyGroup>
     <ProductVersion>3.5</ProductVersion>
     <RootNamespace>RemObjects.Chat.Client</RootNamespace>
-    <ProjectGuid>{A44B8301-E4F6-4333-B7DB-79C4808D52B8}</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <AssemblyName>ChatTestClient</AssemblyName>
-    <ApplicationIcon>Properties\App.ico</ApplicationIcon>
+    <ProjectGuid>{F121AC70-65F7-4AAD-A1D3-5CA67ACFDE59}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AssemblyName>RemObjects.Chat.Client</AssemblyName>
     <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
-    <TargetFramework>.NETCore</TargetFramework>
+    <TargetFramework>.NETCore7.0</TargetFramework>
     <Mode>Echoes</Mode>
     <DefaultUses>RemObjects.Elements.RTL</DefaultUses>
-    <GenerateDebugInfo>True</GenerateDebugInfo>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <Optimize>False</Optimize>
@@ -31,11 +29,13 @@
   <PropertyGroup Condition=" '$(Target)' == 'iOS' ">
     <Mode>Toffee</Mode>
     <SubMode>iOS</SubMode>
+    <OutputType>StaticLibrary</OutputType>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Target)' == 'macOS' ">
     <Mode>Toffee</Mode>
     <SubMode>macOS</SubMode>
     <EntitlementsFile>.\Entitlements.entitlements</EntitlementsFile>
+    <OutputType>StaticLibrary</OutputType>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Target)' == 'Echoes' ">
     <Mode>Echoes</Mode>
@@ -53,17 +53,6 @@
       <ProjectFile>..\RemObjects.Chat\RemObjects.Chat.elements</ProjectFile>
       <Private>True</Private>
     </ProjectReference>
-    <ProjectReference Include="..\RemObjects.Chat.Client\RemObjects.Chat.Client.elements">
-      <Project>{f121ac70-65f7-4aad-a1d3-5ca67acfde59}</Project>
-      <ProjectFile>..\RemObjects.Chat.Client\RemObjects.Chat.Client.elements</ProjectFile>
-      <Private>True</Private>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Program.pas" />
-    <Content Include="Properties\App.ico" />
-    <None Include="Entitlements.entitlements" />
-    <Compile Include="ChatServer.WUnite.pas" />
   </ItemGroup>
   <ItemGroup Condition="'$(Target)' == 'macOS'">
     <Reference Include="Security" />
@@ -98,5 +87,10 @@
       <Private>True</Private>
     </Reference>
   </ItemGroup>
-  <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.Echoes.targets" />
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.pas" />
+    <Compile Include="ChatUser.pas" />
+    <Compile Include="ChatServer.pas" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>

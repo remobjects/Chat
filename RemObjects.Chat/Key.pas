@@ -1,7 +1,19 @@
 ﻿namespace RemObjects.Infrastructure.Encryption;
 
+{$IF ECHOES}
 uses
+  System.Security.Cryptography,
   RemObjects.Elements.Serialization;
+{$ENDIF}
+
+{$IF TOFFEE}
+uses
+  CoreFoundation,
+  Foundation,
+  Security,
+  RemObjects.Elements.RTL;
+{$ENDIF}
+
 
 type
   KeyType = public enum(RSA, EC);

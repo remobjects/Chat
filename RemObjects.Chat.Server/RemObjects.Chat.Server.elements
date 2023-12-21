@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <ProductVersion>3.5</ProductVersion>
+    <RootNamespace>RemObjects.Chat.Server</RootNamespace>
+    <ProjectGuid>{3EF15611-550A-4A28-9D8A-2AF4ED9E72A9}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AssemblyName>RemObjects.Chat.Server</AssemblyName>
+    <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
+    <TargetFramework>.NETCore7.0</TargetFramework>
+    <Mode>Echoes</Mode>
+    <DefaultUses>RemObjects.Elements.RTL</DefaultUses>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <Optimize>False</Optimize>
+    <OutputPath>.\Bin\Debug</OutputPath>
+    <ConditionalDefines>DEBUG;TRACE;</ConditionalDefines>
+    <GeneratePDB>True</GeneratePDB>
+    <GenerateMDB>True</GenerateMDB>
+    <EnableAsserts>True</EnableAsserts>
+    <CpuType>anycpu</CpuType>
+    <EnableUnmanagedDebugging>False</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <OutputPath>.\Bin\Release</OutputPath>
+    <CpuType>anycpu</CpuType>
+    <EnableUnmanagedDebugging>False</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Echoes">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Elements">
+      <Private>True</Private>
+    </Reference>
+    <ProjectReference Include="..\RemObjects.Chat\RemObjects.Chat.elements">
+      <Project>{feaa7193-a5a7-4cff-935f-a8a0906765c7}</Project>
+      <ProjectFile>..\RemObjects.Chat\RemObjects.Chat.elements</ProjectFile>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.pas" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
+</Project>

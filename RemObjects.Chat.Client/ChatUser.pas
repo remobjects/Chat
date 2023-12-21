@@ -1,7 +1,7 @@
 ﻿namespace RemObjects.Chat.Client;
 
 uses
-  RemObjects.Elements.Serialization,
+  //RemObjects.Elements.Serialization,
   RemObjects.Infrastructure.Encryption;
 
 type
@@ -38,6 +38,7 @@ type
 
     //
 
+    property UserID: Guid;
     property ChatServer: ChatServer;
     property OwnKeyPair: KeyPair;
 
@@ -66,13 +67,13 @@ type
       var lSignature := OwnKeyPair.SignWithPrivateKey(lData);
       Log($"lSignature        {lSignature.ToHexString}");
       if aChat is var lPrivateChat: PrivateChat then begin
-        var lEncryptedMessage := /*lPrivateChat.Person.PublicKey*/OwnKeyPair.EncryptWithPublicKey(lData);
+        var lEncryptedMessage := lPrivateChat.Person.PublicKey.EncryptWithPublicKey(lData);
         Log($"lEncryptedMessage {lEncryptedMessage.ToHexString}");
 
 
         result := new Byte[2+length(lSignature)+length(lEncryptedMessage)];
         result[0] := ord('S');
-        result[length(lSignature)+1] := ord('M');
+        result[length(lSignature)+1] := ord('-');
         &Array.Copy(lSignature, 0, result, 1, length(lSignature));
         &Array.Copy(lEncryptedMessage, 0, result, length(lSignature)+2, length(lEncryptedMessage));
         Log($"result          {result.ToHexString}");
@@ -93,7 +94,7 @@ type
       case aData[0] of
         ord('S'): begin
 
-            if aData[1+256] ≠ ord('M') then
+            if aData[1+256] ≠ ord('-') then
               raise new Exception("Unexpected message format (#2).");
 
             var lSignature := new Byte[256];
@@ -150,6 +151,25 @@ type
         //Log($"lSignature {lSignature.ToHexString}");
 
       end;
+
+      //
+      //
+      //
+
+      method Connect;
+      begin
+        var lAuthenticationCode: Guid;// := fChatServer.GetChatAuthenticationCode;
+
+        var lAuthenticationMessage := new Byte[2+sizeOf(Guid)*2];
+        lAuthenticationMessage[0] := ord('A');
+        &Array.Copy(UserID.ToByteArray, 0, lAuthenticationMessage, 1, sizeOf(Guid));
+        lAuthenticationMessage[1+sizeOf(Guid)] := ord('-');
+        &Array.Copy(lAuthenticationCode.ToByteArray, 0, lAuthenticationMessage, 2+sizeOf(Guid), sizeOf(Guid));
+
+        // Connect
+        // SendMessage(lAuthenticationMessage)
+      end;
+
     end;
 
     method FindSender(aSenderID: Guid): nullable Person;
@@ -193,9 +213,9 @@ type
     property SharedKeyPair: KeyPair;
     property Persons: List<Person>;
 
-    [Encode(false)]
+    //[Encode(false)]
     property PersonsByID: Dictionary<Guid,Person>;
-    [Encode(false)]
+    //[Encode(false)]
     property PersonsByShortID: Dictionary<Integer,Person>;
   end;
 
