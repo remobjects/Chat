@@ -105,6 +105,7 @@
     </Folder>
     <Compile Include="Package.pas" />
     <Compile Include="Payloads.pas" />
+    <Compile Include="BaseClient.pas" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>

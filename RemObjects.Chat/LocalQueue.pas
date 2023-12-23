@@ -4,8 +4,21 @@ type
   LocalQueue<P> = public class
   public
 
-    public ClientEndpoint: ITwoWayQueueEndpoint<P> := new ClientEndpointimpl(self); readonly;
-    public ServerEndpoint: ITwoWayQueueEndpoint<P> := new ServerEndpointImpl(self); readonly;
+    constructor;
+    begin
+      ID := Guid.NewGuid
+    end;
+
+    property ID: Guid;
+
+    property ClientEndpoint: ITwoWayQueueEndpoint<P> := new ClientEndpointimpl(self); readonly;
+    property ServerEndpoint: ITwoWayQueueEndpoint<P> := new ServerEndpointImpl(self); readonly;
+
+    [ToString]
+    method ToString: String; override;
+    begin
+      result := $"LocalQueue {ID}";
+    end;
 
     type
       ClientEndpointImpl = class(ITwoWayQueueEndpoint<P>)

@@ -3,11 +3,12 @@
 uses
   RemObjects.Chat,
   //RemObjects.Elements.Serialization,
+  RemObjects.Infrastructure,
   RemObjects.Infrastructure.Encryption;
 
 type
   //[Codable(NamingStyle.camelCase)]
-  ChatUser = public class
+  Client = public class(BaseClient)
   public
 
     constructor; empty;
@@ -39,9 +40,97 @@ type
 
     //
 
-    property UserID: Guid;
-    property ChatServer: ChatServer;
     property OwnKeyPair: KeyPair;
+
+    method FindChat(aChatID: not nullable Guid): Chat;
+    begin
+      result := fChatsByID[aChatID];
+      if not assigned(result) then begin
+
+        //var lUser := FindUser(aChatID);
+        //if assigned(lUser) then begin
+          //result := new HubPrivateChat(Hub := self, ChatID := lUser.ID, UserID := lUser.ID);
+          //fChatsByID[lUser.ID] := result;
+          //exit;
+        //end;
+
+        //var lGroupChat := FindGroupChat(aChatID);
+        //if assigned(lGroupChat) then begin
+          //result := new HubGroupChat(Hub := self, ChatID := lGroupChat.ID);
+          //fChatsByID[lUser.ID] := result;
+          //exit;
+        //end;
+
+        raise new Exception($"Chat '{aChatID}' not found.");
+
+      end;
+    end;
+
+    //
+    // incoming packages
+    //
+
+    method OnReceivePackage(aPackage: Package); override; protected;
+    begin
+      try
+
+        Log($"Client {UserID} received: {aPackage.MessageID}, {aPackage.Type}, {aPackage.Payload}");
+        case aPackage.Type of
+          PackageType.Message: begin
+              //var lMessage := CreateMessage(aPackage);
+              Log($"Client: New message received");//: {lMessage}");
+              SendStatusResponse(aPackage, PackageType.Delivered, DateTime.UtcNow);
+                var lChat := FindChat(aPackage.ChatID);
+                var lEncryptedMessage := aPackage.Payload as MessagePayload;
+              try
+                var lMessage := DecodeMessage(lEncryptedMessage, lChat);
+                Log($"Client: decrypted message: {lMessage.Payload}");
+                SendStatusResponse(aPackage, PackageType.Decrypted, DateTime.UtcNow);
+                lChat.AddMessage(lMessage);
+              except
+                SendStatusResponse(aPackage, PackageType.FailedToDecrypt, DateTime.UtcNow);
+              end;
+            end;
+          PackageType.FailedToDecrypt: begin
+              Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}.");
+              {$HINT TODO: re-encrypt with new key and resend}
+            end;
+          PackageType.Delivered,
+          PackageType.Received,
+          PackageType.Decrypted,
+          PackageType.Displayed,
+          PackageType.Read: begin
+            var lChat := FindChat(aPackage.ChatID);
+            lChat.SetMessageStatus(aPackage.MessageID, aPackage.Type);
+              Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}");
+            end;
+        end;
+
+      except
+        on E: Exception do
+          Log($"{E.Message}");
+      end;
+    end;
+
+    method SendStatusResponse(aPackage: Package; aStatus: PackageType; aDate: DateTime);
+    begin
+      var lPackage := new Package(&Type := aStatus,
+                                  SenderID := UserID,
+                                  RecipientID := aPackage.SenderID,
+                                  ChatID := aPackage.ChatID,
+                                  MessageID := aPackage.MessageID,
+                                  Payload := new StatusPayload(Status := aStatus,
+                                                               Date := DateTime.UtcNow));
+      SendPackage(lPackage);
+    end;
+
+
+    //
+    //
+    //
+
+
+    //property ChatServer: ChatServer;
 
     property Chats: ImmutableList<Chat> read fChats;
     var fChats := new List<Chat>; private;
@@ -57,6 +146,22 @@ type
     end;
 
     //
+
+    method SendMessage(aMessage: ChatMessage; aChat: Chat): MessagePayload;
+    begin
+      var lEncodedMessage := EncodeMessage(aMessage, aChat);
+      //Log($"lEncodedMessage {lEncodedMessage}");
+      lEncodedMessage.Save("/Users/mh/temp/message1.msg");
+
+      var lPackage := new Package(&Type := PackageType.Message,
+                                  SenderID := UserID,
+                                  ChatID := aChat.ID,
+                                  MessageID := Guid.NewGuid,
+                                  Payload := lEncodedMessage);
+      SendPackage(lPackage);
+    end;
+
+  private
 
     method EncodeMessage(aMessage: ChatMessage; aChat: Chat): MessagePayload;
     begin
@@ -85,8 +190,10 @@ type
 
     end;
 
-    method DecodeMessage(aPayload: MessagePayload): ChatMessage;
+    method DecodeMessage(aPackage: Package): ChatMessage;
     begin
+      var lChat := FindChat(aPackage.ChatID);
+      result := DecodeMessage(aPackage.Payload as MessagePayload, lChat);
     end;
 
     method DecodeMessage(aPayload: MessagePayload; aChat: Chat): ChatMessage;
@@ -134,8 +241,6 @@ type
       //Log($"result.Payload {result.Payload}");
       //Log($"result.SignatureValid {result.SignatureValid}");
 
-      aChat.AddMessage(result);
-
     end;
 
     //
@@ -165,7 +270,6 @@ type
 
     end;
 
-
   end;
 
 //[Codable(NamingStyle.camelCase)]
@@ -179,6 +283,11 @@ type
       fMessages.Add(aMessage);
     end;
 
+    method SetMessageStatus(aMessageID: not nullable Guid; aStatus: PackageType);
+    begin
+      //fMessages.Add(aMessage);
+    end;
+
     var fMessages := new List<ChatMessage>; private;
 
   end;
@@ -187,35 +296,35 @@ type
   PrivateChat = public class(Chat)
   public
 
-  property Person: Person;
+    property Person: Person;
 
-    end;
+  end;
 
-    //[Codable(NamingStyle.camelCase)]
+  //[Codable(NamingStyle.camelCase)]
   GroupChat = public class(Chat)
   public
-  property SharedKeyPair: KeyPair;
+    property SharedKeyPair: KeyPair;
     property Persons: List<Person>;
 
     //[Encode(false)]
     property PersonsByID: Dictionary<Guid,Person>;
     //[Encode(false)]
     property PersonsByShortID: Dictionary<Integer,Person>;
-    end;
+  end;
 
   ChatMessage = public class
   public
-  property SignatureValid: Boolean;
+    property SignatureValid: Boolean;
     property Payload: JsonDocument;
 
     property SenderID: Guid read Guid.TryParse(Payload["senderId"]);
     property Sender: Person;
-    end;
+  end;
 
-    //[Codable(NamingStyle.camelCase)]
+  //[Codable(NamingStyle.camelCase)]
   Person = public class
   public
-  property ID: Guid;
+    property ID: Guid;
     property ShortID: nullable Integer;
     property Name: nullable String;
     property Handle: nullable String;
@@ -223,6 +332,6 @@ type
     property LastSeen: nullable DateTime;
     property PublicKey: PublicKey;
 
-    end;
+  end;
 
-  end.
+end.

@@ -10,6 +10,7 @@ type
 
     property Clients := new Dictionary<Guid,HubClient>;
     property Chats := new Dictionary<Guid,HubChat>;
+    property Messages := new Dictionary<Guid,HubMessage>;
 
     method FindUser(aChatID: Guid): nullable HubUser;
     begin
@@ -21,14 +22,14 @@ type
 
     end;
 
-    method FindChat(aChatID: Guid): HubChat;
+    method FindChat(aChatID: not nullable Guid): HubChat;
     begin
       result := Chats[aChatID];
       if not assigned(result) then begin
 
         var lUser := FindUser(aChatID);
         if assigned(lUser) then begin
-          result := new HubPrivateChat(Hub := self, ChatID := lUser.ID, User := lUser);
+          result := new HubPrivateChat(Hub := self, ChatID := lUser.ID, UserID := lUser.ID);
           Chats[lUser.ID] := result;
           exit;
         end;
@@ -40,7 +41,7 @@ type
           exit;
         end;
 
-        result := new HubChat(Hub := self, ChatID := aChatID); {$HINT for now}
+        result := new HubPrivateChat(Hub := self, ChatID := aChatID, UserID := aChatID); {$HINT for now}
 
       end;
     end;
@@ -56,6 +57,18 @@ type
       end;
     end;
 
+    method FindMessage(aPackage: not nullable Package): not nullable HubMessage;
+    begin
+      result := Messages[aPackage.MessageID];
+      if not assigned(result) then
+        raise new Exception("Message '{aPackage.MessageID}' not found");
+    end;
+
+    method SaveMessage(aMessage: not nullable HubMessage);
+    begin
+      Messages[aMessage.ID] := aMessage;
+    end;
+
     //
 
     method SendPackage(aUserID: Guid; aPackage: Package);
@@ -66,30 +79,14 @@ type
 
   end;
 
-  HubClient = public class
+  HubClient = public class(BaseClient)
   public
 
     property Hub: not nullable Hub; required;
-    property UserID: not nullable Guid; required;
-    property Queue: ITwoWayQueueEndpoint<Package> read fQueue write SetQueue;
 
-    method SendPackage(aPackage: Package);
-    begin
-      fQueue.Send(aPackage);
-    end;
+  protected
 
-  private
-
-    fQueue: ITwoWayQueueEndpoint<Package>;
-
-    method SetQueue(aValue: ITwoWayQueueEndpoint<Package>);
-    begin
-      fQueue:Receive := nil;
-      fQueue := aValue;
-      fQueue:Receive := @OnReceivePackage;
-    end;
-
-    method OnReceivePackage(aPackage: Package);
+    method OnReceivePackage(aPackage: Package); override;
     begin
       try
         aPackage.SenderID := UserID;
@@ -105,35 +102,63 @@ type
 
   end;
 
-  HubChat = public class
+  HubChat = public abstract class
   public
 
     property Hub: weak not nullable Hub; required;
     property ChatID: not nullable Guid; required;
 
+    property AllUserIDs: sequence of Guid read; abstract;
+
     method CreateMessage(aPackage: not nullable Package): not nullable HubMessage;
     begin
       result := new HubMessage(OriginalPackage := aPackage,
                                Received := DateTime.UtcNow);
+      Hub.SaveMessage(result);
       //raise new NotImplementedException("CreateMessage"); {$HINT for now}
     end;
 
-    method FindMessage(aPackage: Package): not nullable HubMessage;
+    method DeliverMessage(aMessage: HubMessage) ToAllBut(aAllButUserID: nullable Guid);
     begin
-      raise new Exception($"Message {aPackage.MessageID} not found"); {$HINT for now}
+      var lPackage := aMessage.OriginalPackage;
+      for each u in AllUserIDs do
+        if u ≠ aAllButUserID then
+          Hub.FindClient(u).Queue.Send(lPackage);
     end;
 
-    method DeliverMessgage(aMessage: HubMessage) ToAllBut(aUserID: Guid);
+    //
+    // Incoming packages
+    //
+
+    method OnReceivePackage(aPackage: Package);
     begin
-      //
+      case aPackage.Type of
+        PackageType.Message: begin
+            var lMessage := CreateMessage(aPackage);
+            Log($"Server: New message received: {lMessage}");
+            DeliverMessage(lMessage) ToAllBut(aPackage.SenderID);
+            SendStatusResponse(lMessage, Guid.Empty, PackageType.Received, DateTime.UtcNow);
+          end;
+        PackageType.Received: raise new Exception("Should not happen on server");
+        PackageType.Delivered,
+        PackageType.Decrypted,
+        PackageType.FailedToDecrypt,
+        PackageType.Displayed,
+        PackageType.Read: begin
+            Log($"Server: New status received for {aPackage.MessageID}: {aPackage.Type}");
+            NotifyStatus(aPackage);
+          end;
+      end;
     end;
+
+    //
 
     method NotifyStatus(aPackage: Package);
     begin
-      var lMessage := FindMessage(aPackage);
+      var lMessage := Hub.FindMessage(aPackage);
       case aPackage.Type of
-
-        PackageType.Received: lMessage.Delivered := aPackage.Sent;
+        PackageType.Received: ;{no-op}
+        PackageType.Delivered: lMessage.Delivered := aPackage.Sent;
         PackageType.Decrypted: lMessage.Decryted := aPackage.Sent;
         PackageType.FailedToDecrypt: ;
         PackageType.Displayed: lMessage.Displayed := aPackage.Sent;
@@ -154,36 +179,19 @@ type
       Hub.SendPackage(aMessage.SenderID, lPackage);
     end;
 
-    method OnReceivePackage(aPackage: Package);
-    begin
-      case aPackage.Type of
-        PackageType.Message: begin
-            var lMessage := CreateMessage(aPackage);
-            Log($"New message received: {lMessage}");
-            SendStatusResponse(lMessage, Guid.Empty, PackageType.Received, DateTime.UtcNow);
-            DeliverMessgage(lMessage) ToAllBut(aPackage.SenderID);
-          end;
-        PackageType.Delivered:; {should not happen on server}
-        PackageType.Received,
-        PackageType.Decrypted,
-        PackageType.FailedToDecrypt,
-        PackageType.Displayed,
-        PackageType.Read: begin
-            NotifyStatus(aPackage);
-          end;
-      end;
-    end;
-
 
   end;
 
   HubPrivateChat = public class(HubChat)
   public
-    property User: HubUser;
+    property UserID: nullable Guid; required;
+    property AllUserIDs: sequence of Guid read [UserID]; override;
   end;
 
   HubGroupChat = public class(HubChat)
-    property Users: List<HubUser>;
+  public
+    property UserIDs: List<Guid>;
+    property AllUserIDs: sequence of Guid read UserIDs; override;
   end;
 
   HubMessage = public class

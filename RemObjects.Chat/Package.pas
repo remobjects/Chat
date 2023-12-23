@@ -6,6 +6,7 @@ type
 
     property &Type: PackageType; required;
     property SenderID: not nullable Guid; required;
+    property RecipientID: nullable Guid;
     property ChatID: not nullable Guid; required;
     property MessageID: not nullable Guid; required;
     property Sent: not nullable DateTime := DateTime.UtcNow;
