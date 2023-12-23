@@ -92,6 +92,12 @@
       <HintPath>\Users\mh\Code\RemObjects\RTL2\Source\bin\Debug\NETStandard\Elements.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <ProjectReference Include="..\RemObjects.Chat.Server\RemObjects.Chat.Server.elements">
+      <HintPath>..\RemObjects.Chat.Server\Bin\Debug\RemObjects.Chat.Server.dll</HintPath>
+      <Project>{3ef15611-550a-4a28-9d8a-2af4ed9e72a9}</Project>
+      <ProjectFile>..\RemObjects.Chat.Server\RemObjects.Chat.Server.elements</ProjectFile>
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup Condition="'$(Target)' == 'Android'">
     <Reference Include="elements">

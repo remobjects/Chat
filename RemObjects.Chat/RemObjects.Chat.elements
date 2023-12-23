@@ -10,6 +10,8 @@
     <Mode>Echoes</Mode>
     <DefaultUses>RemObjects.Elements.RTL</DefaultUses>
     <BinaryName>RemObjectsChat</BinaryName>
+    <MangleTypeNames>True</MangleTypeNames>
+    <WarnOnImplicitNotNullableCast>True</WarnOnImplicitNotNullableCast>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <Optimize>False</Optimize>
@@ -85,6 +87,24 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.pas" />
     <Compile Include="Key.pas" />
+    <Compile Include="Queue.pas">
+      <VirtualFolder>Queue</VirtualFolder>
+    </Compile>
+    <Compile Include="LocalQueue.pas">
+      <VirtualFolder>Queue</VirtualFolder>
+    </Compile>
+    <Folder Include="Queue">
+      <Virtual>True</Virtual>
+    </Folder>
+    <Compile Include="Message.pas" />
+    <Compile Include="Packet.pas">
+      <VirtualFolder>Network</VirtualFolder>
+    </Compile>
+    <Folder Include="Network">
+      <Virtual>True</Virtual>
+    </Folder>
+    <Compile Include="Package.pas" />
+    <Compile Include="Payloads.pas" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>
