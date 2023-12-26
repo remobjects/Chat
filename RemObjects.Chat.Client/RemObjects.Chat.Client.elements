@@ -10,10 +10,10 @@
     <TargetFramework>.NETCore7.0</TargetFramework>
     <Mode>Echoes</Mode>
     <DefaultUses>RemObjects.Elements.RTL</DefaultUses>
+    <OutputPath>..\Bin</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <Optimize>False</Optimize>
-    <OutputPath>.\Bin\Debug</OutputPath>
     <ConditionalDefines>DEBUG;TRACE;</ConditionalDefines>
     <GeneratePDB>True</GeneratePDB>
     <GenerateMDB>True</GenerateMDB>
@@ -22,7 +22,6 @@
     <EnableUnmanagedDebugging>False</EnableUnmanagedDebugging>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-    <OutputPath>.\Bin\Release</OutputPath>
     <CpuType>anycpu</CpuType>
     <EnableUnmanagedDebugging>False</EnableUnmanagedDebugging>
   </PropertyGroup>
@@ -91,6 +90,7 @@
     <Compile Include="Properties\AssemblyInfo.pas" />
     <Compile Include="ChatUser.pas" />
     <Compile Include="ChatServer.pas" />
+    <Compile Include="ChatMessage.pas" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>

@@ -16,8 +16,8 @@ type
     property SignatureValid: Boolean;
     property JsonPayload: JsonDocument;
 
-    property SenderID: Guid read Guid.TryParse(JsonPayload["senderId"]);
     property ChatID: Guid read Guid.TryParse(JsonPayload["senderId"]);
+    property SenderID: Guid read Guid.TryParse(JsonPayload["senderId"]);
 
     { IChatMessage }
 

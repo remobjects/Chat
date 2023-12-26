@@ -8,35 +8,35 @@ uses
 
 type
   //[Codable(NamingStyle.camelCase)]
-  Client = public class(BaseClient)
+  ChatClient = public class(BaseClient)
   public
 
     constructor; empty;
 
-    constructor withFolder(aFolder: String);
-    begin
-      Load(aFolder);
-    end;
+    //constructor withFolder(aFolder: String);
+    //begin
+      //Load(aFolder);
+    //end;
 
-    method Load(aFolder: not nullable String);
-    begin
-      OwnKeyPair := new KeyPair withFiles(Path.Combine(aFolder, "public_key.key"),
-                                          Path.Combine(aFolder, "private_key.key"),
-                                          KeyFormat.Bytes);
-      for each f in Folder.GetFiles(aFolder).Where(f -> f.LastPathComponent.EndsWith("_public.key")) do
-        fPersons.Add(new Person(ID := Guid.TryParse(f.LastPathComponent.Substring(0, length(f.LastPathComponent)-11)),
-                                PublicKey := new KeyPair withFiles(f, nil, KeyFormat.Bytes)));
-    end;
+    //method Load(aFolder: not nullable String);
+    //begin
+      //OwnKeyPair := new KeyPair withFiles(Path.Combine(aFolder, "public_key.key"),
+                                          //Path.Combine(aFolder, "private_key.key"),
+                                          //KeyFormat.Bytes);
+      //for each f in Folder.GetFiles(aFolder).Where(f -> f.LastPathComponent.EndsWith("_public.key")) do
+        //fPersons.Add(new UserInfo(UserID := Guid.TryParse(f.LastPathComponent.Substring(0, length(f.LastPathComponent)-11)),
+                                //PublicKey := new KeyPair withFiles(f, nil, KeyFormat.Bytes)));
+    //end;
 
-    method Save(aFolder: not nullable String);
-    begin
-      Folder.Create(aFolder);
-      OwnKeyPair.SaveToFiles(Path.Combine(aFolder, "public_key.key"),
-                             Path.Combine(aFolder, "private_key.key"),
-                             KeyFormat.Bytes);
-      for each p in Persons do
-        p.PublicKey.SaveToFiles(Path.Combine(aFolder, p.ID+"_public.key"), nil, KeyFormat.Bytes);
-    end;
+    //method Save(aFolder: not nullable String);
+    //begin
+      //Folder.Create(aFolder);
+      //OwnKeyPair.SaveToFiles(Path.Combine(aFolder, "public_key.key"),
+                             //Path.Combine(aFolder, "private_key.key"),
+                             //KeyFormat.Bytes);
+      //for each p in Persons do
+        //p.PublicKey.SaveToFiles(Path.Combine(aFolder, p.UserID+"_public.key"), nil, KeyFormat.Bytes);
+    //end;
 
     //
 
@@ -47,21 +47,10 @@ type
       result := fChatsByID[aChatID];
       if not assigned(result) then begin
 
-        //var lUser := FindUser(aChatID);
-        //if assigned(lUser) then begin
-          //result := new HubPrivateChat(Hub := self, ChatID := lUser.ID, UserID := lUser.ID);
-          //fChatsByID[lUser.ID] := result;
-          //exit;
-        //end;
-
-        //var lGroupChat := FindGroupChat(aChatID);
-        //if assigned(lGroupChat) then begin
-          //result := new HubGroupChat(Hub := self, ChatID := lGroupChat.ID);
-          //fChatsByID[lUser.ID] := result;
-          //exit;
-        //end;
-
-        raise new Exception($"Chat '{aChatID}' not found.");
+        var lChatInfo := ChatControllerProxy.FindChat(aChatID);
+        if not assigned(lChatInfo) then
+          raise new Exception($"Chat '{aChatID}' not found.");
+        result := new Chat(self, lChatInfo);
 
       end;
     end;
@@ -83,7 +72,7 @@ type
                 var lChat := FindChat(aPackage.ChatID);
                 var lEncryptedMessage := aPackage.Payload as MessagePayload;
               try
-                var lMessage := DecodeMessage(lEncryptedMessage, lChat);
+                var lMessage := DecodeMessage(aPackage.SenderID, lEncryptedMessage, lChat);
                 Log($"Client: decrypted message: {lMessage.Payload}");
                 SendStatusResponse(aPackage, PackageType.Decrypted, DateTime.UtcNow);
                 lChat.AddMessage(lMessage);
@@ -100,8 +89,8 @@ type
           PackageType.Decrypted,
           PackageType.Displayed,
           PackageType.Read: begin
-            var lChat := FindChat(aPackage.ChatID);
-            lChat.SetMessageStatus(aPackage.MessageID, aPackage.Type);
+              //var lChat := FindChat(aPackage.ChatID); CHAT ID DIFFERS BETWEEN CLIENTS. BAD.
+              //lChat.SetMessageStatus(aPackage.MessageID, aPackage.Type);
               Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}");
             end;
         end;
@@ -136,13 +125,13 @@ type
     var fChats := new List<Chat>; private;
     var fChatsByID := new Dictionary<Guid,Chat>; private;
 
-    property Persons: ImmutableList<Person>;// read fPersons;
-    var fPersons := new List<Person>; private;
+    property Persons: ImmutableList<UserInfo>;// read fPersons;
+    var fPersons := new List<UserInfo>; private;
 
     method AddChat(aChat: Chat);
     begin
       fChats.Add(aChat);
-      fChatsByID[aChat.ID] := aChat;
+      fChatsByID[aChat.ChatID] := aChat;
     end;
 
     //
@@ -155,7 +144,7 @@ type
 
       var lPackage := new Package(&Type := PackageType.Message,
                                   SenderID := UserID,
-                                  ChatID := aChat.ID,
+                                  ChatID := aChat.ChatID,
                                   MessageID := Guid.NewGuid,
                                   Payload := lEncodedMessage);
       SendPackage(lPackage);
@@ -171,13 +160,7 @@ type
       var lStringData := aMessage.Payload.ToJsonString(JsonFormat.Minimal);
       var lData := Encoding.UTF8.GetBytes(lStringData);
 
-      if aChat is var lPrivateChat: PrivateChat then begin
-        lPayload.EncryptedMessage := lPrivateChat.Person.PublicKey.EncryptWithPublicKey(lData);
-      end
-      else if aChat is var lGroupChat: GroupChat then begin
-        lPayload.EncryptedMessage := lGroupChat.SharedKeyPair.EncryptWithPublicKey(lData);
-      end;
-
+      lPayload.EncryptedMessage := aChat.PublicKey.EncryptWithPublicKey(lData);
       lPayload.Signature := OwnKeyPair.SignWithPrivateKey(lData);
 
       //Log($"-- encode --");
@@ -190,50 +173,64 @@ type
 
     end;
 
-    method DecodeMessage(aPackage: Package): ChatMessage;
-    begin
-      var lChat := FindChat(aPackage.ChatID);
-      result := DecodeMessage(aPackage.Payload as MessagePayload, lChat);
-    end;
+    //method DecodeMessage(aPackage: Package): ChatMessage;
+    //begin
+      //var lChat := FindChat(aPackage.ChatID);
+      //result := DecodeMessage(aPackage.Payload as MessagePayload, lChat);
+    //end;
 
-    method DecodeMessage(aPayload: MessagePayload; aChat: Chat): ChatMessage;
+    method DecodeMessage(aSenderID: Guid; aPayload: MessagePayload; aChat: Chat): ChatMessage;
     begin
 
       result := new ChatMessage;
 
-      if aChat is var lPrivateChat: PrivateChat then begin
+      case aChat.Type of
+        ChatType.Private: begin
+            var lDecryptedMessage := OwnKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage);
+            var lString := Encoding.UTF8.GetString(lDecryptedMessage);
 
-        var lDecryptedMessage := OwnKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage);
-        var lString := Encoding.UTF8.GetString(lDecryptedMessage);
-        result.Payload := JsonDocument.FromString(lString);
+            result.Payload := JsonDocument.FromString(lString);
+            result.Sender := FindSender(aSenderID);
 
-        result.Sender := lPrivateChat.Person;
-        result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
-        if not result.SignatureValid then begin
-          if RefreshPublicKey(result.Sender) then
-            result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
-        end;
-
-      end
-      else if aChat is var lGroupChat: GroupChat then begin
-
-        var lDecryptedMessage := lGroupChat.SharedKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage);
-        var lString := Encoding.UTF8.GetString(lDecryptedMessage);
-        result.Payload := JsonDocument.FromString(lString);
-
-        var lSenderID := result.SenderID;
-        if assigned(lSenderID) then begin
-          result.Sender := FindSender(lSenderID);
-          if assigned(result.Sender:PublicKey) then begin
-            result.SignatureValid := lPrivateChat.Person.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
-            if not result.SignatureValid then begin
-              if RefreshPublicKey(result.Sender) then
-                result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
+            if assigned(result.Sender:PublicKey) then begin
+              result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
+              if not result.SignatureValid then begin
+                if RefreshPublicKey(result.Sender) then
+                  result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
+              end;
             end;
+
           end;
-        end;
+        ChatType.Group: begin
+
+            var lDecryptedMessage := aChat.SharedKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage);
+            var lString := Encoding.UTF8.GetString(lDecryptedMessage);
+
+            result.Payload := JsonDocument.FromString(lString);
+            result.Sender := FindSender(result.SenderID);
+
+            if assigned(aSenderID) then begin
+              result.Sender := FindSender(result.SenderID);
+              if assigned(result.Sender:PublicKey) then begin
+                result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
+                if not result.SignatureValid then begin
+                  if RefreshPublicKey(result.Sender) then
+                    result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
+                end;
+              end;
+            end;
+
+          end;
+        else raise new Exception($"Unexpected chat type {aChat.Type}.")
 
       end;
+
+      result.Chat := ChatControllerProxy.FindChat(aChat.ChatID);
+      if assigned(result.SenderID) and (result.SenderID ≠ aSenderID) then
+        raise new Exception("Mismatched sender in payload");
+      if assigned(result.ChatID) and (result.ChatID ≠ aChat.ChatID) then
+        raise new Exception("Mismatched sender in payload");
+
 
       //Log($"-- decode --");
       //Log($"lSignature        {aPayload.Signature.ToHexString}");
@@ -261,22 +258,82 @@ type
       // SendMessage(lAuthenticationMessage)
     end;
 
-    method FindSender(aSenderID: Guid): nullable Person;
+    method FindSender(aSenderID: Guid): nullable UserInfo;
     begin
+      if assigned(aSenderID) then
+        result := ChatControllerProxy.FindUser(aSenderID);
     end;
 
-    method RefreshPublicKey(aPerson: Person): Boolean;
+    method RefreshPublicKey(aPerson: UserInfo): Boolean;
     begin
 
     end;
 
   end;
 
-//[Codable(NamingStyle.camelCase)]
-  Chat = public abstract class
+  Chat = public class
   public
 
-    property ID: not nullable Guid := Guid.NewGuid;
+    [Warning("For internal use/testing only")]
+    constructor(aClient: not nullable ChatClient; aChatID: not nullable Guid;  aUserIDs: ImmutableList<Guid>; aType: ChatType);
+    begin
+      Client := aClient;
+      UserID := aClient.UserID;
+      ChatID := aChatID;
+      UserIDs := aUserIDs;
+      &Type := aType;
+    end;
+
+    constructor(aClient: not nullable ChatClient; aChatInfo: not nullable ChatInfo);
+    begin
+      Client := aClient;
+      UserID := aClient.UserID;
+      ChatID := aChatInfo.ID;
+      UserIDs := aChatInfo.UserIDs;
+
+      case aChatInfo type of
+        PrivateChatInfo: begin
+            &Type := ChatType.Private;
+          end;
+        GroupChatInfo: begin
+            &Type := ChatType.Group;
+          end;
+        else raise new Exception($"Unexpected chat type {&Type}.")
+      end;
+    end;
+
+    property Client: weak not nullable ChatClient;
+    property ChatID: not nullable Guid;
+    property UserID: not nullable Guid;
+    property &Type: ChatType;
+
+    property UserIDs: ImmutableList<Guid>;
+    //property Persons: List<UserInfo>;
+
+    property PublicKey: KeyPair read begin
+      result := case &Type of
+        ChatType.Private: OtherUserPublicKey;
+        ChatType.Group: SharedKeyPair;
+        else raise new Exception($"Unexpected chat type {&Type}.")
+      end;
+    end;
+
+    //PrivateChat
+    property OtherUserPublicKey: PublicKey read OtherUser.PublicKey;
+    property OtherUser: UserInfo read begin
+      if &Type = ChatType.Private then begin
+        result := Client.ChatControllerProxy.FindUser(UserIDs.First(u -> u ≠ UserID));
+      end;
+    end;
+
+
+    // GroupChat
+    property SharedKeyPair: KeyPair;
+
+    //
+    //
+    //
+
 
     method AddMessage(aMessage: ChatMessage);
     begin
@@ -292,46 +349,26 @@ type
 
   end;
 
+  ChatType = public enum(&Private, &Group);
+
     //[Codable(NamingStyle.camelCase)]
-  PrivateChat = public class(Chat)
-  public
+  //PrivateChat = public class(Chat)
+  //public
 
-    property Person: Person;
+    //property UserInfo: UserInfo;
 
-  end;
+  //end;
 
-  //[Codable(NamingStyle.camelCase)]
-  GroupChat = public class(Chat)
-  public
-    property SharedKeyPair: KeyPair;
-    property Persons: List<Person>;
+  ////[Codable(NamingStyle.camelCase)]
+  //GroupChat = public class(Chat)
+  //public
+    //property SharedKeyPair: KeyPair;
+    //property Persons: List<UserInfo>;
 
-    //[Encode(false)]
-    property PersonsByID: Dictionary<Guid,Person>;
-    //[Encode(false)]
-    property PersonsByShortID: Dictionary<Integer,Person>;
-  end;
-
-  ChatMessage = public class
-  public
-    property SignatureValid: Boolean;
-    property Payload: JsonDocument;
-
-    property SenderID: Guid read Guid.TryParse(Payload["senderId"]);
-    property Sender: Person;
-  end;
-
-  //[Codable(NamingStyle.camelCase)]
-  Person = public class
-  public
-    property ID: Guid;
-    property ShortID: nullable Integer;
-    property Name: nullable String;
-    property Handle: nullable String;
-    property Status: nullable String;
-    property LastSeen: nullable DateTime;
-    property PublicKey: PublicKey;
-
-  end;
+    ////[Encode(false)]
+    //property PersonsByID: Dictionary<Guid,UserInfo>;
+    ////[Encode(false)]
+    //property PersonsByShortID: Dictionary<Integer,UserInfo>;
+  //end;
 
 end.

@@ -10,10 +10,10 @@
     <TargetFramework>.NETCore7.0</TargetFramework>
     <Mode>Echoes</Mode>
     <DefaultUses>RemObjects.Elements.RTL</DefaultUses>
+    <OutputPath>..\Bin</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <Optimize>False</Optimize>
-    <OutputPath>.\Bin\Debug</OutputPath>
     <ConditionalDefines>DEBUG;TRACE;</ConditionalDefines>
     <GeneratePDB>True</GeneratePDB>
     <GenerateMDB>True</GenerateMDB>
@@ -22,7 +22,6 @@
     <EnableUnmanagedDebugging>False</EnableUnmanagedDebugging>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-    <OutputPath>.\Bin\Release</OutputPath>
     <CpuType>anycpu</CpuType>
     <EnableUnmanagedDebugging>False</EnableUnmanagedDebugging>
   </PropertyGroup>
@@ -39,10 +38,28 @@
       <ProjectFile>..\RemObjects.Chat\RemObjects.Chat.elements</ProjectFile>
       <Private>True</Private>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure.Identity\RemObjects.Infrastructure.Identity.elements">
+      <Project>{d8303d7f-baa1-40d0-b567-b620125a6488}</Project>
+      <ProjectFile>..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure.Identity\RemObjects.Infrastructure.Identity.elements</ProjectFile>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure\RemObjects.Infrastructure.elements">
+      <Project>{9e2cdcfc-3ae2-49fa-bccb-0b694279837a}</Project>
+      <ProjectFile>..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure\RemObjects.Infrastructure.elements</ProjectFile>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure.Aspects\RemObjects.Infrastructure.Aspects.elements">
+      <Project>{3aa53d72-9495-4bd1-997f-88f2a730ab2c}</Project>
+      <ProjectFile>..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure.Aspects\RemObjects.Infrastructure.Aspects.elements</ProjectFile>
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.pas" />
     <Compile Include="Hub.pas" />
+    <Compile Include="ChatController.pas" />
+    <Compile Include="ChatManager.pas" />
+    <Compile Include="Hub.Chat.pas" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>

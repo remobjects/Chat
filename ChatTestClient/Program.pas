@@ -7,6 +7,11 @@ uses
   RemObjects.Chat,
   RemObjects.Chat.Client;
 
+{$IF ECHOES}
+uses
+  RemObjects.Chat.Server;
+{$ENDIF}
+
 type
   Program = class
   public
@@ -19,82 +24,63 @@ type
       //Log($"Key.GenerateKey {Convert.ToHexString(lKey.GetPublicKey)}");
       //Log($"Key.GenerateKey {Convert.ToHexString(lKey.GetPrivateKey)}");
 
-      var lDummyQueue1 := new LocalQueue<Package>;
-      //lDummyQueue1.ClientEndpoint.Receive := (aPackage) -> begin
-        //Log($"Client1 received: {aPackage.MessageID}, {aPackage.Type}, {aPackage.Payload}");
-      //end;
 
-      var lDummyQueue2 := new LocalQueue<Package>;
-      //lDummyQueue2.ClientEndpoint.Receive := (aPackage) -> begin
-        //Log($"Client2: received: {aPackage.MessageID}, {aPackage.Type}, {aPackage.Payload}");
-      //end;
+      var lDummyQueue1 := new LocalQueue<Package>; // local connection from Client 1 to Server
+      var lDummyQueue2 := new LocalQueue<Package>; // local connection from Client 2 to Server
 
-      var lClient1 := new Client(UserID := Guid.NewGuid);
-      lClient1.OwnKeyPair := KeyPair.Generate(KeyType.RSA);
+      //
+      // Set up the Clients
+      //
+
+      var lUser1 := new UserInfo(ID := Guid.NewGuid, Name := "User 1", PublicKey := KeyPair.Generate(KeyType.RSA));
+      var lUser2 := new UserInfo(ID := Guid.NewGuid, Name := "User 2", PublicKey := KeyPair.Generate(KeyType.RSA));
+
+      var lClient1 := new ChatClient(User := lUser1, OwnKeyPair := lUser1.PublicKey);
       lClient1.Queue := lDummyQueue1.ClientEndpoint;
-      //writeLn($"public:  {lClient1.OwnKeyPair.GetPublicKey.ToHexString}");
-      //writeLn($"private: {lClient1.OwnKeyPair.GetPrivateKey.ToHexString}");
+      lClient1.ChatControllerProxy := ChatController.Instance;
 
-      var lClient2 := new Client(UserID := Guid.NewGuid);
-      lClient2.UserID := Guid.NewGuid;
-      lClient2.OwnKeyPair := KeyPair.Generate(KeyType.RSA);
+      var lClient2 := new ChatClient(User := lUser2, OwnKeyPair := lUser2.PublicKey);
       lClient2.Queue := lDummyQueue2.ClientEndpoint;
-      //writeLn($"public:  {lClient2.OwnKeyPair.GetPublicKey.ToHexString}");
-      //writeLn($"private: {lClient2.OwnKeyPair.GetPrivateKey.ToHexString}");
+      lClient2.ChatControllerProxy := ChatController.Instance;
+
+
+
+      //
+      // Set up the Server
+      //
 
       {$IF ECHOES}
+      ChatManager.ActiveChatManager := new InMemoryChatManager;
+      (ChatManager.ActiveChatManager as InMemoryChatManager).__AddUser(lUser1);
+      (ChatManager.ActiveChatManager as InMemoryChatManager).__AddUser(lUser2);
+
       var lHub := new RemObjects.Chat.Server.Hub as not nullable;
 
-      var lHubClient1 := new RemObjects.Chat.Server.HubClient(Hub := lHub, UserID := lClient1.UserID);
+      var lHubClient1 := new RemObjects.Chat.Server.HubClient(Hub := lHub, User := lUser1);
       lHubClient1.Queue := lDummyQueue1.ServerEndpoint;
       lHub.Clients[lHubClient1.UserID] := lHubClient1;
 
-      var lHubClient2 := new RemObjects.Chat.Server.HubClient(Hub := lHub, UserID := lClient2.UserID);
+      var lHubClient2 := new RemObjects.Chat.Server.HubClient(Hub := lHub, User := lUser2);
       lHubClient2.Queue := lDummyQueue2.ServerEndpoint;
       lHub.Clients[lHubClient2.UserID] := lHubClient2;
       {$ENDIF}
 
+      //
+      // Set up the chat. Normally this would be a call to a server API, say via ROSDK
+      //
 
-      var lChat1 := new PrivateChat;
-      lChat1.ID := lClient2.UserID;
-      lChat1.Person := new Person;
-      lChat1.Person.PublicKey := lClient2.OwnKeyPair;//PublicKey.Generate(KeyType.RSA);
+      var lChat := ChatController.Instance.CreatePrivateChat(lClient1.UserID, lClient2.UserID);
 
-      var lChat2 := new PrivateChat;
-      lChat2.ID := lClient1.UserID;
-      lChat2.Person := new Person;
-      lChat2.Person.PublicKey := lClient1.OwnKeyPair;//PublicKey.Generate(KeyType.RSA);
+      //
+      // Set up the local chat, for both users. Nprmally this would happen after calling the above API
+      //
 
-      lClient1.AddChat(lChat2);
-      lClient2.AddChat(lChat1);
-
-      lClient1.Save("/Users/mh/temp/Client1");
-      lClient2.Save("/Users/mh/temp/Client2");
+      var lChat1 := new Chat(lClient1, lChat.ID, [lClient1.UserID, lClient2.UserID].ToList, ChatType.Private);
 
       var lMessage := new ChatMessage;
-      lMessage.Payload := JsonDocument.FromString('{"message": "hello WUnite!!"}');
+      lMessage.Payload := JsonDocument.FromString('{"senderId": "{3e6eaa7a-d8a2-4c00-868b-7f8c2a0f1e97}", "message": "hello WUnite!!"}');
 
       lClient1.SendMessage(lMessage, lChat1);
-
-      //var lEncodedMessage := lClient1.EncodeMessage(lMessage, lChat);
-      ////Log($"lEncodedMessage {lEncodedMessage}");
-      //lEncodedMessage.Save("/Users/mh/temp/message1.msg");
-
-      //var lPackage := new Package(&Type := PackageType.Message,
-                                  //SenderID := lClient1.UserID,
-                                  //ChatID := lChat.ID,
-                                  //MessageID := Guid.NewGuid,
-                                  //Payload := lEncodedMessage);
-      //lDummyQueue1.ClientEndpoint.Send(lPackage);
-
-      //var lLoadedMessage := new MessagePayload;
-      //lLoadedMessage.Load("/Users/mh/temp/message1.msg");
-      //Log($"lLoadedMessage {lLoadedMessage}");
-      // /*var lMessage2 :=*/ lChatUser.DecodeMessage(lLoadedMessage, lChat)
-
-      //var lCoder := new JsonCoder;
-      //lCoder.Encode(lChatUser);
-      //Log($"lCoder.ToString {lCoder.ToString}");
     end;
 
   end;

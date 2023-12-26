@@ -9,13 +9,13 @@
     <TargetFramework>.NETCore7.0</TargetFramework>
     <Mode>Echoes</Mode>
     <DefaultUses>RemObjects.Elements.RTL</DefaultUses>
-    <BinaryName>RemObjectsChat</BinaryName>
+    <BinaryName>RemObjects.Chat</BinaryName>
     <MangleTypeNames>True</MangleTypeNames>
     <WarnOnImplicitNotNullableCast>True</WarnOnImplicitNotNullableCast>
+    <OutputPath>..\Bin</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <Optimize>False</Optimize>
-    <OutputPath>.\Bin\Debug</OutputPath>
     <ConditionalDefines>DEBUG;TRACE;</ConditionalDefines>
     <GeneratePDB>True</GeneratePDB>
     <GenerateMDB>True</GenerateMDB>
@@ -24,7 +24,6 @@
     <EnableUnmanagedDebugging>False</EnableUnmanagedDebugging>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-    <OutputPath>.\Bin\Release</OutputPath>
     <CpuType>anycpu</CpuType>
     <EnableUnmanagedDebugging>False</EnableUnmanagedDebugging>
   </PropertyGroup>
@@ -32,12 +31,14 @@
     <Mode>Toffee</Mode>
     <SubMode>iOS</SubMode>
     <OutputType>StaticLibrary</OutputType>
+    <BinaryName>RemObjectsChat</BinaryName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Target)' == 'macOS' ">
     <Mode>Toffee</Mode>
     <SubMode>macOS</SubMode>
     <EntitlementsFile>.\Entitlements.entitlements</EntitlementsFile>
     <OutputType>StaticLibrary</OutputType>
+    <BinaryName>RemObjectsChat</BinaryName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Target)' == 'Echoes' ">
     <Mode>Echoes</Mode>
@@ -106,6 +107,8 @@
     <Compile Include="Package.pas" />
     <Compile Include="Payloads.pas" />
     <Compile Include="BaseClient.pas" />
+    <Compile Include="ChatInfo.pas" />
+    <Compile Include="ChatController.pas" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>

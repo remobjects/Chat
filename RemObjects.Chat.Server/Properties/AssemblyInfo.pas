@@ -7,12 +7,12 @@ uses
   System.Resources,
   System.Runtime.InteropServices;
 
-  [assembly: AssemblyTitle("")]
+[assembly: AssemblyTitle("")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("")]
-[assembly: AssemblyCopyright("")]
+[assembly: AssemblyCompany("RemObjects Software")]
+[assembly: AssemblyProduct("RemObjects Infrastructore")]
+[assembly: AssemblyCopyright("RemObjects Software 2023-")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: AssemblyVersion("1.0.0.1")]
@@ -20,7 +20,7 @@ uses
 [assembly: ComVisible(false)]
 
 [assembly: AssemblyDelaySign(false)]
-[assembly: AssemblyKeyName("RemObjectsSoftware")]
+//[assembly: AssemblyKeyName("RemObjectsSoftware")]
 
 {$ENDIF}
 

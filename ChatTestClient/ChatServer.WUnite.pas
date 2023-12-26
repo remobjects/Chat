@@ -1,7 +1,7 @@
 ﻿namespace RemObjects.Chat.Client;
 
 type
-  WuniteChatServer = public class(ChatServer)
+  WuniteChatControllerProxy = public class(ChatControllerProxy)
   private
   protected
   public

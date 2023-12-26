@@ -7,8 +7,11 @@ type
   BaseClient = public abstract class
   public
 
-    property UserID: not nullable Guid; required;
+    property User: not nullable UserInfo; required;
+    property UserID: not nullable Guid read User.ID;
+
     property Queue: ITwoWayQueueEndpoint<Package> read fQueue write SetQueue;
+    property ChatControllerProxy: IChatControllerProxy;
 
     method SendPackage(aPackage: Package);
     begin
