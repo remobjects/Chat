@@ -8,6 +8,8 @@ type
   Hub = public class
   public
 
+    class property Instance := new Hub; lazy; readonly;
+
     property Clients := new Dictionary<Guid,HubClient>;
     property Chats := new Dictionary<Guid,HubChat>;
     property Messages := new Dictionary<Guid,HubMessage>;
@@ -33,8 +35,13 @@ type
       result := Clients[aUserID];
       if not assigned(result) then begin
 
+        var lUserInfo := ChatController.Instance.FindUser(aUserID);
+        if not assigned(lUserInfo) then
+          raise new Exception($"User '{aUserID}' not found.");
 
-        raise new Exception($"unknown user/client id {aUserID}.");
+        var lQueue := ClientQueueManager.ActiveClientQueueManager.FindClientQueue(aUserID);
+
+        result := new HubClient(Hub := self, User := lUserInfo, Queue := lQueue);
 
       end;
     end;
@@ -65,6 +72,13 @@ type
   public
 
     property Hub: not nullable Hub; required;
+
+    method Send(aPackage: not nullable Package);
+    begin
+      if not assigned(Queue) then
+        raise new Exception($"Client {UserID} has no queue.");
+      Queue.Send(aPackage);
+    end;
 
   protected
 

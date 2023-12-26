@@ -23,7 +23,7 @@ type
       //PacketQueue.Enqueue(aPacket);
     //end;
 
-    method SendPackets;
+    method SendPackets; virtual;
     begin
       //while PacketQueue.Count > 0 do begin
         //var p := PacketQueue.Peek;

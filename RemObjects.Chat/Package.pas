@@ -4,12 +4,20 @@ type
   Package = public class(IPersistent)
   public
 
-    property &Type: PackageType; required;
-    property SenderID: not nullable Guid; required;
+    constructor; empty;
+
+    constructor withByteArray(aBytes: array of Byte);
+    begin
+      LoadFromByteArray(aBytes);
+    end;
+
+    property &Type: PackageType; //required;
+    property ID: /*not nullable*/ Guid; //required;
+    property SenderID: /*not nullable*/ Guid; //required;
     property RecipientID: nullable Guid;
-    property ChatID: not nullable Guid; required;
-    property MessageID: not nullable Guid; required;
-    property Sent: not nullable DateTime := DateTime.UtcNow;
+    property ChatID: /*not nullable*/ Guid; //required;
+    property MessageID: /*not nullable*/ Guid; //required;
+    property Sent: /*not nullable*/ DateTime := DateTime.UtcNow;
     property Payload: IPayload;
 
     { IPersistent }
@@ -20,6 +28,7 @@ type
       var lWriter := new BinaryWriter withBinary(lBinary);
       lWriter.WriteUInt8($01);
       lWriter.WriteUInt8(&Type as Byte);
+      lWriter.WriteGuid(ID);
       lWriter.WriteGuid(SenderID);
       lWriter.WriteGuid(coalesce(RecipientID, Guid.Empty));
       lWriter.WriteGuid(ChatID);
@@ -35,7 +44,7 @@ type
       result := lBinary.ToArray;
     end;
 
-    method FromByteArray(aBytes: array of Byte);
+    method LoadFromByteArray(aBytes: array of Byte);
     begin
       if length(aBytes) < 2 + Guid.Size*4 + sizeOf(Double) + 1 then
         raise new Exception("Data is too small to be a Pckage.");
@@ -43,6 +52,7 @@ type
       if lReader.ReadUInt8 ≠ $01 then
         raise new Exception("Unexpected Package format version.");
       &Type := lReader.ReadUInt8 as PackageType;
+      ID := lReader.ReadGuid;
       SenderID := lReader.ReadGuid;
       RecipientID := lReader.ReadGuid;
       if RecipientID = Guid.Empty then
@@ -60,11 +70,18 @@ type
       Payload.Load(aBytes, lReader.Offset);
 
     end;
+
+    [ToString]
+    method ToString: String; override;
+    begin
+      result := $"<Package type {&Type} from {SenderID} to {ChatID}/{RecipientID}: {Payload}>";
+    end;
+
   end;
 
   IPersistent = public interface
     method ToByteArray: array of Byte;
-    method FromByteArray(aBytes: array of Byte);
+    method LoadFromByteArray(aBytes: array of Byte);
   end;
 
   PackageType = public enum(Message, Received, Delivered, Decrypted, FailedToDecrypt, Displayed, &Read);

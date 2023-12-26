@@ -33,7 +33,7 @@ type
       var lPackage := aMessage.OriginalPackage;
       for each u in UserIDs do
         if u ≠ aAllButUserID then
-          Hub.FindClient(u).Queue.Send(lPackage);
+          Hub.FindClient(u).Send(lPackage);
     end;
 
     //
@@ -81,6 +81,7 @@ type
     method SendStatusResponse(aMessage: HubMessage; aSenderID: not nullable Guid; aStatus: PackageType; aDate: DateTime);
     begin
       var lPackage := new Package(&Type := aStatus,
+                                  ID := Guid.NewGuid,
                                   SenderID := aSenderID,
                                   ChatID := ChatID,
                                   MessageID := aMessage.ID,

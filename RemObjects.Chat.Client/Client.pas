@@ -104,6 +104,7 @@ type
     method SendStatusResponse(aPackage: Package; aStatus: PackageType; aDate: DateTime);
     begin
       var lPackage := new Package(&Type := aStatus,
+                                  ID := Guid.NewGuid,
                                   SenderID := UserID,
                                   RecipientID := aPackage.SenderID,
                                   ChatID := aPackage.ChatID,
@@ -143,6 +144,7 @@ type
       lEncodedMessage.Save("/Users/mh/temp/message1.msg");
 
       var lPackage := new Package(&Type := PackageType.Message,
+                                  ID := Guid.NewGuid,
                                   SenderID := UserID,
                                   ChatID := aChat.ChatID,
                                   MessageID := Guid.NewGuid,

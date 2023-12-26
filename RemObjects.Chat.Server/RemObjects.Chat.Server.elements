@@ -60,6 +60,7 @@
     <Compile Include="ChatController.pas" />
     <Compile Include="ChatManager.pas" />
     <Compile Include="Hub.Chat.pas" />
+    <Compile Include="ClientQueueManager.pas" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>
