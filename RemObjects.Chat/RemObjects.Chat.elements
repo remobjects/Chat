@@ -109,6 +109,9 @@
     <Compile Include="BaseClient.pas" />
     <Compile Include="ChatInfo.pas" />
     <Compile Include="ChatController.pas" />
+    <Compile Include="PersistentQueue.pas">
+      <VirtualFolder>Queue</VirtualFolder>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>

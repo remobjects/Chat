@@ -24,6 +24,7 @@ type
       //Log($"Key.GenerateKey {Convert.ToHexString(lKey.GetPublicKey)}");
       //Log($"Key.GenerateKey {Convert.ToHexString(lKey.GetPrivateKey)}");
 
+      var lLocalDummyQueue := new LocalFolderTestQueue<Package> withFolder("/Users/mh/temp/FolderQueue1"); // local connection from Client 1 to Server
 
       var lDummyQueue1 := new LocalQueue<Package>; // local connection from Client 1 to Server
       var lDummyQueue2 := new LocalQueue<Package>; // local connection from Client 2 to Server
@@ -36,7 +37,7 @@ type
       var lUser2 := new UserInfo(ID := Guid.NewGuid, Name := "User 2", PublicKey := KeyPair.Generate(KeyType.RSA));
 
       var lClient1 := new ChatClient(User := lUser1, OwnKeyPair := lUser1.PublicKey);
-      lClient1.Queue := lDummyQueue1.ClientEndpoint;
+      lClient1.Queue := lLocalDummyQueue;//lDummyQueue1.ClientEndpoint;
       lClient1.ChatControllerProxy := ChatController.Instance;
 
       var lClient2 := new ChatClient(User := lUser2, OwnKeyPair := lUser2.PublicKey);

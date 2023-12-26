@@ -88,9 +88,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.pas" />
-    <Compile Include="ChatUser.pas" />
+    <Compile Include="Client.pas" />
     <Compile Include="ChatServer.pas" />
     <Compile Include="ChatMessage.pas" />
+    <Compile Include="Chat.pas" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>

@@ -5,13 +5,14 @@ type
     method ToByteArray: array of Byte;
     method Save(aFilename: String);
     method Load(aFilename: String);
+    method Load(aBytes: array of Byte; aOffset: Integer := 0);
   end;
 
   //
   //
   //
 
-  JsonPayload = public abstract class(IPayload)
+  JsonPayload = public class(IPayload)
   public
 
     constructor; empty;
@@ -31,6 +32,11 @@ type
     method Load(aFilename: String);
     begin
       Json := JsonDocument.FromFile(aFilename);
+    end;
+
+    method Load(aBytes: array of Byte; aOffset: Integer := 0);
+    begin
+      Json := JsonDocument.TryFromString(Encoding.UTF8.GetString(aBytes, aOffset));
     end;
 
     [ToString]
