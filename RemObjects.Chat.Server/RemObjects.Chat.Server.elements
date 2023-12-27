@@ -53,6 +53,10 @@
       <ProjectFile>..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure.Aspects\RemObjects.Infrastructure.Aspects.elements</ProjectFile>
       <Private>True</Private>
     </ProjectReference>
+    <Reference Include="RemObjects.InternetPack">
+      <HintPath>\Users\mh\Code\RemObjects\internetpack\Bin\NETStandard2.0\RemObjects.InternetPack.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.pas" />

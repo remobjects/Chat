@@ -62,11 +62,19 @@
       <HintPath>\Users\mh\Code\RemObjects\RTL2\Source\bin\Debug\macOS\libElements.fx</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="libInternetPack">
+      <HintPath>\Users\mh\Code\RemObjects\internetpack\Bin\macOS\libInternetPack.fx</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup Condition="'$(Target)' == 'iOS'">
     <Reference Include="Security" />
     <Reference Include="libElements">
       <HintPath>\Users\mh\Code\RemObjects\RTL2\Source\bin\Debug\iOS\libElements.fx</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="libInternetPack">
+      <HintPath>\Users\mh\Code\RemObjects\internetpack\Bin\iOS\libInternetPack.fx</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
@@ -77,6 +85,10 @@
     </Reference>
     <Reference Include="Elements">
       <HintPath>\Users\mh\Code\RemObjects\RTL2\Source\bin\Debug\NETStandard\Elements.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="RemObjects.InternetPack">
+      <HintPath>\Users\mh\Code\RemObjects\internetpack\Bin\NETStandard2.0\RemObjects.InternetPack.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
@@ -111,6 +123,21 @@
     <Compile Include="ChatController.pas" />
     <Compile Include="PersistentQueue.pas">
       <VirtualFolder>Queue</VirtualFolder>
+    </Compile>
+    <Folder Include="InternetPack">
+      <Virtual>True</Virtual>
+    </Folder>
+    <Compile Include="IpChatClient.pas">
+      <VirtualFolder>InternetPack</VirtualFolder>
+    </Compile>
+    <Compile Include="IpChatConnection.pas">
+      <VirtualFolder>InternetPack</VirtualFolder>
+    </Compile>
+    <Compile Include="IpChatException.pas">
+      <VirtualFolder>InternetPack</VirtualFolder>
+    </Compile>
+    <Compile Include="IpChatServer.pas">
+      <VirtualFolder>InternetPack</VirtualFolder>
     </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
