@@ -67,7 +67,7 @@ type
 
   assembly
 
-    method AddMessage(aMessage: ChatMessage);
+    method AddMessage(aMessage: MessageInfo);
     begin
       fMessages.Add(aMessage);
     end;
@@ -77,7 +77,7 @@ type
       //fMessages.Add(aMessage);
     end;
 
-    var fMessages := new List<ChatMessage>; private;
+    var fMessages := new List<MessageInfo>; private;
 
   end;
 

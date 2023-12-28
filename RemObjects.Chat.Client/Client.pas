@@ -2,12 +2,11 @@
 
 uses
   RemObjects.Chat,
-  //RemObjects.Elements.Serialization,
+  RemObjects.Chat.Connection,
   RemObjects.Infrastructure,
   RemObjects.Infrastructure.Encryption;
 
 type
-  //[Codable(NamingStyle.camelCase)]
   ChatClient = public class(BaseClient)
   public
 
@@ -56,6 +55,27 @@ type
     end;
 
     //
+    //
+    //
+
+    method Connect(aHostName: String; aPort: Integer; aAuthenticationCode: Guid);
+    begin
+      if not assigned(fIPClient) then begin
+        fIPClient := new IPChatClient(HostName := aHostName, Port := aPort, UserID := UserID);
+        Queue := fIPClient;
+      end;
+      fIPClient.ConnectToChat(aAuthenticationCode);
+    end;
+
+    method Disconnect;
+    begin
+      fIPClient.DisconnectFromChat;
+    end;
+
+    var fIPClient: IPChatClient; private;
+
+
+    //
     // incoming packages
     //
 
@@ -69,10 +89,9 @@ type
               //var lMessage := CreateMessage(aPackage);
               Log($"Client: New message received");//: {lMessage}");
               SendStatusResponse(aPackage, PackageType.Delivered, DateTime.UtcNow);
-                var lChat := FindChat(aPackage.ChatID);
-                var lEncryptedMessage := aPackage.Payload as MessagePayload;
+              var lChat := FindChat(aPackage.ChatID);
               try
-                var lMessage := DecodeMessage(aPackage.SenderID, lEncryptedMessage, lChat);
+                var lMessage := DecodeMessage(aPackage, lChat);
                 Log($"Client: decrypted message: {lMessage.Payload}");
                 SendStatusResponse(aPackage, PackageType.Decrypted, DateTime.UtcNow);
                 lChat.AddMessage(lMessage);
@@ -82,15 +101,19 @@ type
             end;
           PackageType.FailedToDecrypt: begin
               Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}.");
+              ResendMessage(aPackage.MessageID);
               {$HINT TODO: re-encrypt with new key and resend}
+            end;
+          PackageType.Decrypted: begin
+              Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}");
+              DiscardMessage(aPackage.MessageID);
             end;
           PackageType.Delivered,
           PackageType.Received,
-          PackageType.Decrypted,
           PackageType.Displayed,
           PackageType.Read: begin
-              //var lChat := FindChat(aPackage.ChatID); CHAT ID DIFFERS BETWEEN CLIENTS. BAD.
-              //lChat.SetMessageStatus(aPackage.MessageID, aPackage.Type);
+              var lChat := FindChat(aPackage.ChatID);
+              lChat.SetMessageStatus(aPackage.MessageID, aPackage.Type);
               Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}");
             end;
         end;
@@ -126,8 +149,8 @@ type
     var fChats := new List<Chat>; private;
     var fChatsByID := new Dictionary<Guid,Chat>; private;
 
-    property Persons: ImmutableList<UserInfo>;// read fPersons;
-    var fPersons := new List<UserInfo>; private;
+    //property Persons: ImmutableList<UserInfo>;// read fPersons;
+    //var fPersons := new List<UserInfo>; private;
 
     method AddChat(aChat: Chat);
     begin
@@ -137,88 +160,114 @@ type
 
     //
 
-    method SendMessage(aMessage: ChatMessage; aChat: Chat);
+    method SendMessage(aMessage: MessageInfo);
     begin
-      var lEncodedMessage := EncodeMessage(aMessage, aChat);
-      //Log($"lEncodedMessage {lEncodedMessage}");
-      lEncodedMessage.Save("/Users/mh/temp/message1.msg");
+      aMessage.SenderID := UserID;
+      aMessage.ID := Guid.NewGuid;
+      aMessage.SendCount := aMessage.SendCount+1;
+
+      var lChat := FindChat(aMessage.ChatID);
+      var lEncryptedMessage := EncryptMessage(aMessage, lChat);
 
       var lPackage := new Package(&Type := PackageType.Message,
                                   ID := Guid.NewGuid,
                                   SenderID := UserID,
-                                  ChatID := aChat.ChatID,
-                                  MessageID := Guid.NewGuid,
-                                  Payload := lEncodedMessage);
+                                  ChatID := lChat.ChatID,
+                                  MessageID := aMessage.ID,
+                                  Payload := lEncryptedMessage);
       SendPackage(lPackage);
+      fMessages[aMessage.ID] := aMessage;
     end;
+
+    method ResendMessage(aMessageID: Guid);
+    begin
+      var lMessage := fMessages[aMessageID];
+      if assigned(lMessage) then begin
+        if lMessage.SendCount < MaximujmDeliveryAttempts then begin
+          SendMessage(lMessage);
+        end
+        else begin
+          var lChat := FindChat(lMessage.ChatID);
+          lChat.SetMessageStatus(lMessage.ID, PackageType.FailedToDecrypt);
+        end;
+      end;
+    end;
+
+    method DiscardMessage(aMessageID: Guid);
+    begin
+      fMessages[aMessageID] := nil;
+    end;
+
+    property MaximujmDeliveryAttempts: Integer := 5;
 
   private
 
-    method EncodeMessage(aMessage: ChatMessage; aChat: Chat): MessagePayload;
+    var fMessages := new Dictionary<Guid,MessageInfo>;
+
+    method EncryptMessage(aMessage: MessageInfo; aChat: Chat): MessagePayload;
     begin
-
-      var lPayload := new MessagePayload;
-
       var lStringData := aMessage.Payload.ToJsonString(JsonFormat.Minimal);
       var lData := Encoding.UTF8.GetBytes(lStringData);
 
-      lPayload.EncryptedMessage := aChat.PublicKey.EncryptWithPublicKey(lData);
-      lPayload.Signature := OwnKeyPair.SignWithPrivateKey(lData);
+      result := new MessagePayload;
+      result.EncryptedMessage := aChat.PublicKey.EncryptWithPublicKey(lData);
+      result.Signature := OwnKeyPair.SignWithPrivateKey(lData);
 
       //Log($"-- encode --");
       //Log($"lStringData {lStringData}");
       //Log($"lData {lData.ToHexString}");
-      //Log($"lEncryptedMessage {lPayload.EncryptedMessage.ToHexString}");
-      //Log($"lSignature        {lPayload.Signature}");
-
-      result := lPayload;
-
+      //Log($"lEncryptedMessage {result.EncryptedMessage.ToHexString}");
+      //Log($"lSignature        {result.Signature}");
     end;
 
-    //method DecodeMessage(aPackage: Package): ChatMessage;
+    //method DecodeMessage(aPackage: Package): MessageInfo;
     //begin
       //var lChat := FindChat(aPackage.ChatID);
       //result := DecodeMessage(aPackage.Payload as MessagePayload, lChat);
     //end;
 
-    method DecodeMessage(aSenderID: Guid; aPayload: MessagePayload; aChat: Chat): ChatMessage;
+    method DecodeMessage(aPackage: Package; aChat: Chat): MessageInfo;
     begin
+      result := new MessageInfo;
+      result.ID := aPackage.MessageID;
+      result.ChatID := aPackage.ChatID;
+      result.SenderID := aPackage.SenderID;
 
-      result := new ChatMessage;
+      result.Sender := FindSender(aPackage.SenderID);
+      result.Chat := ChatControllerProxy.FindChat(aChat.ChatID);
+
+      if aPackage.Payload is not MessagePayload then
+        raise new Exception($"Unexpecyted payload type '{typeOf(aPackage.Payload)}' for message");
+      var lPayload := aPackage.Payload as MessagePayload;
 
       case aChat.Type of
         ChatType.Private: begin
-            var lDecryptedMessage := OwnKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage);
+            var lDecryptedMessage := OwnKeyPair.DecryptWithPrivateKey(lPayload.EncryptedMessage);
             var lString := Encoding.UTF8.GetString(lDecryptedMessage);
 
             result.Payload := JsonDocument.FromString(lString);
-            result.Sender := FindSender(aSenderID);
 
             if assigned(result.Sender:PublicKey) then begin
-              result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
+              result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, lPayload.Signature);
               if not result.SignatureValid then begin
                 if RefreshPublicKey(result.Sender) then
-                  result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
+                  result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, lPayload.Signature);
               end;
             end;
 
           end;
         ChatType.Group: begin
 
-            var lDecryptedMessage := aChat.SharedKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage);
+            var lDecryptedMessage := aChat.SharedKeyPair.DecryptWithPrivateKey(lPayload.EncryptedMessage);
             var lString := Encoding.UTF8.GetString(lDecryptedMessage);
 
             result.Payload := JsonDocument.FromString(lString);
-            result.Sender := FindSender(result.SenderID);
 
-            if assigned(aSenderID) then begin
-              result.Sender := FindSender(result.SenderID);
-              if assigned(result.Sender:PublicKey) then begin
-                result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
-                if not result.SignatureValid then begin
-                  if RefreshPublicKey(result.Sender) then
-                    result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
-                end;
+            if assigned(result.Sender:PublicKey) then begin
+              result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, lPayload.Signature);
+              if not result.SignatureValid then begin
+                if RefreshPublicKey(result.Sender) then
+                  result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, lPayload.Signature);
               end;
             end;
 
@@ -227,11 +276,6 @@ type
 
       end;
 
-      result.Chat := ChatControllerProxy.FindChat(aChat.ChatID);
-      if assigned(result.SenderID) and (result.SenderID ≠ aSenderID) then
-        raise new Exception("Mismatched sender in payload");
-      if assigned(result.ChatID) and (result.ChatID ≠ aChat.ChatID) then
-        raise new Exception("Mismatched sender in payload");
 
 
       //Log($"-- decode --");
@@ -268,7 +312,8 @@ type
 
     method RefreshPublicKey(aPerson: UserInfo): Boolean;
     begin
-
+      var lNewUserInfo := ChatControllerProxy.FindUser(aPerson.ID);
+      aPerson.PublicKey := lNewUserInfo.PublicKey;
     end;
 
   end;

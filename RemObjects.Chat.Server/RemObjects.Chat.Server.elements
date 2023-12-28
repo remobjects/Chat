@@ -38,11 +38,6 @@
       <ProjectFile>..\RemObjects.Chat\RemObjects.Chat.elements</ProjectFile>
       <Private>True</Private>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure.Identity\RemObjects.Infrastructure.Identity.elements">
-      <Project>{d8303d7f-baa1-40d0-b567-b620125a6488}</Project>
-      <ProjectFile>..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure.Identity\RemObjects.Infrastructure.Identity.elements</ProjectFile>
-      <Private>True</Private>
-    </ProjectReference>
     <ProjectReference Include="..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure\RemObjects.Infrastructure.elements">
       <Project>{9e2cdcfc-3ae2-49fa-bccb-0b694279837a}</Project>
       <ProjectFile>..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure\RemObjects.Infrastructure.elements</ProjectFile>
@@ -65,6 +60,7 @@
     <Compile Include="ChatManager.pas" />
     <Compile Include="Hub.Chat.pas" />
     <Compile Include="ClientQueueManager.pas" />
+    <Compile Include="IpChatServer.pas" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>

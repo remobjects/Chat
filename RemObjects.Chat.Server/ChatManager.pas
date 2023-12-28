@@ -2,7 +2,6 @@
 
 uses
   RemObjects.Infrastructure,
-  RemObjects.Infrastructure.Identity,
   RemObjects.Chat;
 
 type
@@ -16,12 +15,14 @@ type
     method FindPrivateChat(aUser1: not nullable Guid; aUser2: not nullable Guid): nullable PrivateChatInfo; abstract;
 
     method AddChat(aChat: ChatInfo); abstract;
-    method RemoveChat(aChatID: Guid); abstract;
+    method RemoveChat(aChatID: not nullable Guid); abstract;
 
-    method AddUserToGroupChat(aChatID: Guid; aUser: not nullable Guid); abstract;
-    method RemoveUserFromGroupChat(aChatID: Guid; aUser: not nullable Guid); abstract;
+    method AddUserToGroupChat(aChatID: not nullable Guid; aUser: not nullable Guid); abstract;
+    method RemoveUserFromGroupChat(aChatID: not nullable Guid; aUser: not nullable Guid); abstract;
 
     method FindUser(aUserID: not nullable Guid): UserInfo; abstract;
+
+    property ChatAuthentications := new Cache<Guid,Guid>(OneTimeAccess := true);
 
   end;
 
@@ -47,12 +48,12 @@ type
       fChats[aChat.ID] := aChat;
     end;
 
-    method RemoveChat(aChatID: Guid); override;
+    method RemoveChat(aChatID: not nullable Guid); override;
     begin
       fChats[aChatID] := nil;
     end;
 
-    method AddUserToGroupChat(aChatID: Guid; aUserID: not nullable Guid); override;
+    method AddUserToGroupChat(aChatID: not nullable Guid; aUserID: not nullable Guid); override;
     begin
       var lChat := fChats[aChatID];
       if not assigned(lChat) then
@@ -64,7 +65,7 @@ type
       lChat.UserIDs.Add(aUserID);
     end;
 
-    method RemoveUserFromGroupChat(aChatID: Guid; aUserID: not nullable Guid); override;
+    method RemoveUserFromGroupChat(aChatID: not nullable Guid; aUserID: not nullable Guid); override;
     begin
       var lChat := fChats[aChatID];
       if not assigned(lChat) then

@@ -78,12 +78,12 @@ type
       {$ENDIF}
     end;
 
-    constructor withFiles(aPublicKeyFile: nullable String; aPrivateKeyFile: nullable String; aFormat: KeyFormat);
+    constructor withFiles(aPublicKeyFile: nullable String; aPrivateKeyFile: nullable String := nil; aFormat: KeyFormat);
     begin
       LoadFromFiles(aPublicKeyFile, aPrivateKeyFile, aFormat);
     end;
 
-    constructor withPublicKey(aPublicKeyData: array of Byte) privateKey(aPrivateKeyData: nullable array of Byte);
+    constructor withPublicKey(aPublicKeyData: array of Byte) privateKey(aPrivateKeyData: nullable array of Byte := nil);
     begin
       LoadFromBytes(aPublicKeyData, aPrivateKeyData);
     end;
@@ -337,6 +337,51 @@ type
       {$ENDIF}
     end;
 
+    //
+    // Encoding
+    //
+
+    {$IF ECHOES}
+    method Encode(aCoder: Coder);
+    begin
+      if HasPublicKey then
+        aCoder.EncodeString("publicKey", Convert.ToBase64String(GetPrivateKey));
+      if HasPrivateKey then
+        aCoder.EncodeString("privateKey", Convert.ToBase64String(GetPublicKey));
+    end;
+
+    method Decode(aCoder: Coder);
+    begin
+      var lPublicKey := aCoder.DecodeString("publicKey");
+      var lPublicKeyData := if assigned(lPublicKey) then Convert.Base64StringToByteArray(lPublicKey);
+      var lPrivateKey := aCoder.DecodeString("privateKey");
+      var lPrivateKeyData := if assigned(lPrivateKey) then Convert.Base64StringToByteArray(lPrivateKey);
+      LoadFromBytes(lPublicKeyData, lPrivateKeyData);
+    end;
+    {$ENDIF}
+
+    //
+    // This is not using Serialization because it will be used client-side too, and Serialixation isn't ported to Cocoa yet :(.
+    //
+
+    method ToJson: JsonObject;
+    begin
+      result := new JsonObject;
+      if HasPublicKey then
+        result["publicKey"] := Convert.ToBase64String(GetPrivateKey);
+      if HasPrivateKey then
+        result["privateKey"] := Convert.ToBase64String(GetPublicKey);
+    end;
+
+    constructor withJson(aJson: JsonDocument);
+    begin
+      var lPublicKey := aJson["publicKey"]:StringValue;
+      var lPublicKeyData := if assigned(lPublicKey) then Convert.Base64StringToByteArray(lPublicKey);
+      var lPrivateKey := aJson["privateKey"]:StringValue;
+      var lPrivateKeyData := if assigned(lPrivateKey) then Convert.Base64StringToByteArray(lPrivateKey);
+      LoadFromBytes(lPublicKeyData, lPrivateKeyData);
+    end;
+
   private
 
     {$IF TOFFEE}
@@ -471,34 +516,6 @@ type
     //
     //
     //
-
-    {$IF ECHOES}
-    method Encode(aCoder: Coder);
-    begin
-      if HasPublicKey then
-        aCoder.EncodeString("publicKey", Convert.ToHexString(GetPrivateKey));
-      if HasPrivateKey then
-        aCoder.EncodeString("privateKey", Convert.ToHexString(GetPublicKey));
-    end;
-
-    method Decode(aCoder: Coder);
-    begin
-      var lPublicKey := aCoder.DecodeString("publicKey");
-      var lPublicKeyData := if assigned(lPublicKey) then Convert.HexStringToByteArray(lPublicKey);
-      var lPrivateKey := aCoder.DecodeString("privateKey");
-      var lPrivateKeyData := if assigned(lPrivateKey) then Convert.HexStringToByteArray(lPrivateKey);
-
-      {$IF ECHOES}
-      fKey := System.Security.Cryptography.RSA.Create();
-      if assigned(lPublicKeyData) then
-        fKey.ImportRSAPublicKey(lPublicKeyData, out var nil);
-      if assigned(lPrivateKeyData) then
-        fKey.ImportRSAPrivateKey(lPrivateKeyData, out var nil);
-      {$ENDIF}
-    end;
-    {$ENDIF}
-
-  private
 
     method GetHasPublicKey: Boolean;
     begin

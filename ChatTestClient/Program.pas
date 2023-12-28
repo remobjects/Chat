@@ -24,7 +24,7 @@ type
       //Log($"Key.GenerateKey {Convert.ToHexString(lKey.GetPublicKey)}");
       //Log($"Key.GenerateKey {Convert.ToHexString(lKey.GetPrivateKey)}");
 
-      var lLocalDummyQueue := new LocalFolderTestQueue<Package> withFolder("/Users/mh/temp/FolderQueue1"); // local connection from Client 1 to Server
+      //var lLocalDummyQueue := new LocalFolderTestQueue<Package> withFolder("/Users/mh/temp/FolderQueue1"); // local connection from Client 1 to Server
 
       var lDummyQueue1 := new LocalQueue<Package>; // local connection from Client 1 to Server
       var lDummyQueue2 := new LocalQueue<Package>; // local connection from Client 2 to Server
@@ -33,8 +33,8 @@ type
       // Set up the Clients
       //
 
-      var lUser1 := new UserInfo(ID := Guid.NewGuid, Name := "User 1", PublicKey := KeyPair.Generate(KeyType.RSA));
-      var lUser2 := new UserInfo(ID := Guid.NewGuid, Name := "User 2", PublicKey := KeyPair.Generate(KeyType.RSA));
+      var lUser1 := new UserInfo(Guid.NewGuid, "User 1", PublicKey := KeyPair.Generate(KeyType.RSA));
+      var lUser2 := new UserInfo(Guid.NewGuid, "User 2", PublicKey := KeyPair.Generate(KeyType.RSA));
 
       var lClient1 := new ChatClient(User := lUser1, OwnKeyPair := lUser1.PublicKey);
       lClient1.Queue := /*lLocalDummyQueue;//*/lDummyQueue1.ClientEndpoint;
@@ -78,11 +78,12 @@ type
 
       var lChat1 := new Chat(lClient1, lChat.ID, [lClient1.UserID, lClient2.UserID].ToList, ChatType.Private);
 
-      var lMessage := new ChatMessage;
+      var lMessage := new MessageInfo;
       //lMessage.Payload := JsonDocument.FromString('{"senderId": "{3e6eaa7a-d8a2-4c00-868b-7f8c2a0f1e97}", "message": "hello WUnite!!"}');
       lMessage.Payload := JsonDocument.FromString('{"message": "hello WUnite!!"}');
+      lMessage.ChatID := lChat1.ChatID;
 
-      lClient1.SendMessage(lMessage, lChat1);
+      lClient1.SendMessage(lMessage);
     end;
 
   end;

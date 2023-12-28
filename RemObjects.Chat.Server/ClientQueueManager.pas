@@ -69,14 +69,16 @@ type
       fOutgoingPackages.Add(aPackage);
     end;
 
-    method SendPackets; override;
+    method SendPackets; override; locked on self;
     begin
       if assigned(Connection) then begin
         var lLastSent := fOutgoingPackages.Count-1;
-        for i := 0 to fOutgoingPackages.Count-1 do begin
+        for i := 0 to fOutgoingPackages.Count-1 do
           DoSendPacket(fOutgoingPackages[i]);
-        end;
         fOutgoingPackages.RemoveRange(0, lLastSent);
+      end
+      else begin
+        Log($"Currently there is no live client connection for user '{UserID}'.");
       end;
     end;
 
