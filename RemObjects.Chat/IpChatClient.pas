@@ -9,13 +9,11 @@ type
   IPChatClient = public class(Client, ITwoWayQueueEndpoint<Package>)
   public
 
-    property HostName: String; required;
-    property Port: Integer; required;
     property UserID: Guid; required;
 
     method ConnectToChat(aAuthenticationCode: Guid);
     begin
-      var lConnection := Connect(HostName, Port);
+      var lConnection := Connect;
       fChatConnection := new IPChatConnection(self, lConnection);
       fChatConnection.SendAuthentication(UserID, aAuthenticationCode);
     end;
@@ -33,6 +31,9 @@ type
     begin
       fPackages.Add(aPackage);
       fPackagesByID[aPackage.ID] := aPackage;
+      if assigned(fChatConnection) then begin
+        fChatConnection.SendPackage(aPackage);
+      end;
     end;
 
     property Receive: block(aPacket: not nullable Package);

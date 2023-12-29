@@ -1,7 +1,7 @@
 ﻿namespace ChatTestClient;
 
 uses
-  RemObjects.Elements.Serialization,
+  //RemObjects.Elements.Serialization,
   RemObjects.Infrastructure,
   RemObjects.Infrastructure.Encryption,
   RemObjects.Chat,
@@ -17,15 +17,9 @@ type
   public
     class method Main(args: array of String): Int32;
     begin
-      // add your own code here
-      writeLn('The magic happens here.');
-      //var lKey := KeyPair.Generate(KeyType.RSA);
-      ////var lKey := new KeyPair fromKeychain;
-      //Log($"Key.GenerateKey {Convert.ToHexString(lKey.GetPublicKey)}");
-      //Log($"Key.GenerateKey {Convert.ToHexString(lKey.GetPrivateKey)}");
+      {$IF ECHOES}
 
       //var lLocalDummyQueue := new LocalFolderTestQueue<Package> withFolder("/Users/mh/temp/FolderQueue1"); // local connection from Client 1 to Server
-
       var lDummyQueue1 := new LocalQueue<Package>; // local connection from Client 1 to Server
       var lDummyQueue2 := new LocalQueue<Package>; // local connection from Client 2 to Server
 
@@ -50,7 +44,6 @@ type
       // Set up the Server
       //
 
-      {$IF ECHOES}
       ChatManager.ActiveChatManager := new InMemoryChatManager;
       (ChatManager.ActiveChatManager as InMemoryChatManager).__AddUser(lUser1);
       (ChatManager.ActiveChatManager as InMemoryChatManager).__AddUser(lUser2);
@@ -64,7 +57,6 @@ type
       //var lHubClient2 := new RemObjects.Chat.Server.HubClient(Hub := Hub.Instance, User := lUser2);
       //lHubClient2.Queue := lDummyQueue2.ServerEndpoint;
       //Hub.Instance.Clients[lHubClient2.UserID] := lHubClient2;
-      {$ENDIF}
 
       //
       // Set up the chat. Normally this would be a call to a server API, say via ROSDK
@@ -84,6 +76,8 @@ type
       lMessage.ChatID := lChat1.ChatID;
 
       lClient1.SendMessage(lMessage);
+
+      {$ENDIF}
     end;
 
   end;

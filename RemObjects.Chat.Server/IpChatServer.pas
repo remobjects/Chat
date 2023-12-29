@@ -36,10 +36,15 @@ type
       //
     end;
 
-    method ReceivePackage(aConnection: not nullable IPChatConnection; aPackage: not nullable Package): Boolean;
+    method ReceivePackage(aConnection: not nullable IPChatConnection; aPackage: not nullable Package);
     begin
-      ClientQueueManager.ActiveClientQueueManager.FindClientQueue(aConnection.UserID).Receive(aPackage);
-      result := true;
+      Log($"ReceivePackage {aPackage}");
+      var lQueue := ClientQueueManager.ActiveClientQueueManager.FindClientQueue(aConnection.UserID);
+      if not assigned(lQueue) then
+        raise new Exception($"No client queue found for user '{aConnection.UserID}'.");
+      if not assigned(lQueue.Receive) then
+        raise new Exception($"Client queue for user '{aConnection.UserID}' is not set up to receive data.");
+      lQueue.Receive(aPackage);
     end;
 
     var fConnections := new Dictionary<Guid,IPChatConnection>;

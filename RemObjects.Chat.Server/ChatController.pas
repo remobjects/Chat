@@ -13,7 +13,7 @@ type
     method CreatePrivateChat(aUserID1: not nullable Guid; aUserID2: not nullable Guid): not nullable ChatInfo;
     begin
       if aUserID1 = aUserID2 then
-        raise new Exception($"User IDs for provatwe chat cannot match.");
+        raise new Exception($"User IDs for private chat must not match.");
       var lChat := ChatManager.ActiveChatManager.FindPrivateChat(aUserID1, aUserID2);
       if not assigned(lChat) then begin
         lChat := new PrivateChatInfo(Guid.NewGuid, [aUserID1, aUserID2].ToList as not nullable);

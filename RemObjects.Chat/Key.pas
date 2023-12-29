@@ -148,18 +148,20 @@ type
     begin
       var lError: CoreFoundation.CFErrorRef;
       Security.SecKeyCopyExternalRepresentation(fPrivateKey, @lError);
-      result := bridge<Foundation.NSData>(Security.SecKeyCopyExternalRepresentation(fPrivateKey, @lError));
-      if not assigned(result) then
+      var lResult := bridge<Foundation.NSData>(Security.SecKeyCopyExternalRepresentation(fPrivateKey, @lError));
+      if not assigned(lResult) then
         raise new Exception($"Error getting private key bytes {Foundation.CFBridgingRelease(lError)}");
+      result := lResult;
     end;
 
     method GetPublicKeyAsNSData: not nullable Foundation.NSData;
     begin
       var lError: CoreFoundation.CFErrorRef;
       Security.SecKeyCopyExternalRepresentation(fPublicKey, @lError);
-      result := bridge<Foundation.NSData>(Security.SecKeyCopyExternalRepresentation(fPublicKey, @lError));
-      if not assigned(result) then
+      var lResult := bridge<Foundation.NSData>(Security.SecKeyCopyExternalRepresentation(fPublicKey, @lError));
+      if not assigned(var lResult) then
         raise new Exception($"Error getting public key bytes {Foundation.CFBridgingRelease(lError)}");
+      result := lResult;
     end;
     {$ENDIF}
 

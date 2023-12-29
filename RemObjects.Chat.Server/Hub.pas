@@ -80,11 +80,10 @@ type
       Queue.Send(aPackage);
     end;
 
-  protected
-
     method OnReceivePackage(aPackage: Package); override;
     begin
       try
+        Log($"OnReceivePackage(User.ID)");
         aPackage.SenderID := User.ID;
         var lChat := Hub.FindChat(aPackage.ChatID);
         if not assigned(lChat) then

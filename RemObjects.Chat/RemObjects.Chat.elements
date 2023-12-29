@@ -95,6 +95,11 @@
   <ItemGroup Condition="'$(Target)' == 'Android'">
     <Reference Include="elements">
       <Private>True</Private>
+      <HintPath>\Users\mh\Code\RemObjects\RTL2\Source\bin\Debug\elements.jar</HintPath>
+    </Reference>
+    <Reference Include="internetpack">
+      <HintPath>\Users\mh\Code\RemObjects\internetpack\Bin\internetpack.jar</HintPath>
+      <Private>True</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>

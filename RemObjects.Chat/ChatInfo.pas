@@ -132,8 +132,8 @@ type
         raise new Exception("ChatInfo json is missing field 'id'.");
       ID := Guid.TryParse(aJson["id"]) as not nullable;
       Name := aJson["name"]:StringValue as not nullable;
-      Handle := aJson["handle"]:StringValue as not nullable;
-      Status := aJson["status"]:StringValue as not nullable;
+      Handle := aJson["handle"]:StringValue;
+      Status := aJson["status"]:StringValue;
       LastSeen := DateTime.TryParseISO8601(aJson["lastSeen"]:StringValue);
       if assigned(aJson["publicKey"]) then
         PublicKey := new PublicKey withJson(aJson["publicKey"]);

@@ -4,7 +4,7 @@ uses
   RemObjects.Infrastructure;
 
 type
-  PersistentQueue<P> = public class(ITwoWayQueueEndpoint<P>)
+  PersistentQueue<P> = public abstract class(ITwoWayQueueEndpoint<P>)
   where P is IPersistent;
   public
 

@@ -16,8 +16,9 @@ type
       result := fClientQueues[aUserID];
       if not assigned(result) then begin
         result := CreateQueueForUser(aUserID);
-        result.UserID := aUserID;
         fClientQueues[aUserID] := result;
+        result.Receive := @Hub.Instance.FindClient(aUserID).OnReceivePackage;
+        result.UserID := aUserID;
       end;
     end;
 

@@ -102,7 +102,6 @@ type
           PackageType.FailedToDecrypt: begin
               Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}.");
               ResendMessage(aPackage.MessageID);
-              {$HINT TODO: re-encrypt with new key and resend}
             end;
           PackageType.Decrypted: begin
               Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}");
@@ -290,19 +289,19 @@ type
     //
     //
 
-    method Connect;
-    begin
-      var lAuthenticationCode: Guid;// := fChatServer.GetChatAuthenticationCode;
+    //method Connect;
+    //begin
+      //var lAuthenticationCode: Guid;// := fChatServer.GetChatAuthenticationCode;
 
-      var lAuthenticationMessage := new Byte[2+sizeOf(Guid)*2];
-      lAuthenticationMessage[0] := ord('A');
-      &Array.Copy(UserID.ToByteArray, 0, lAuthenticationMessage, 1, sizeOf(Guid));
-      lAuthenticationMessage[1+sizeOf(Guid)] := ord('-');
-      &Array.Copy(lAuthenticationCode.ToByteArray, 0, lAuthenticationMessage, 2+sizeOf(Guid), sizeOf(Guid));
+      //var lAuthenticationMessage := new Byte[2+Guid.Size*2];
+      //lAuthenticationMessage[0] := ord('A');
+      //&Array.Copy(UserID.ToByteArray, 0, lAuthenticationMessage, 1, Guid.Size);
+      //lAuthenticationMessage[1+Guid.Size] := ord('-');
+      //&Array.Copy(lAuthenticationCode.ToByteArray, 0, lAuthenticationMessage, 2+Guid.Size, Guid.Size);
 
-      // Connect
-      // SendMessage(lAuthenticationMessage)
-    end;
+      //// Connect
+      //// SendMessage(lAuthenticationMessage)
+    //end;
 
     method FindSender(aSenderID: Guid): nullable UserInfo;
     begin

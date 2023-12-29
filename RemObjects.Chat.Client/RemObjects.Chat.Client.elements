@@ -97,6 +97,11 @@
   <ItemGroup Condition="'$(Target)' == 'Android'">
     <Reference Include="elements">
       <Private>True</Private>
+      <HintPath>\Users\mh\Code\RemObjects\RTL2\Source\bin\Debug\elements.jar</HintPath>
+    </Reference>
+    <Reference Include="cooper">
+      <Private>True</Private>
+      <HintPath>\Users\mh\Code\RemObjects\cooper.jar\Source\bin\Debug\cooper.jar</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
