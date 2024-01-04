@@ -48,8 +48,8 @@ type
         Log($"Incoming packet of type ${Convert.ToHexString(lType, 4)}.");
         case lType of
           $0000: ReadMessage;
-          $1111: ReadSuccessResponse;
-          $6666: ReadErrorResponse;
+          $1111: ReadAck;
+          $6666: ReadNak;
           $316, $4547: raise new ChatException($"This is not a HTTP Server.");
           else raise new ChatException($"Unexpected package kind {Convert.ToHexString(lType)}.");
         end;
@@ -95,15 +95,16 @@ type
       end;
     end;
 
-    method ReadSuccessResponse;
+    method ReadAck;
     begin
       if DataConnection.ReadUInt32LE(out var lMessageID) then
         if not DataConnection.ReadUInt16LE(out var lEtx) then
           if lEtx ≠ $2222 then
             raise new ChatException($"Expected end of package marker, received {Convert.ToHexString(lEtx)}.");
+      Ack(lMessageID);
     end;
 
-    method ReadErrorResponse;
+    method ReadNak;
     begin
       if DataConnection.ReadUInt32LE(out var lMessageID) then begin
         if DataConnection.ReadUInt32LE(out var lSize) and (lSize < MaxErrorMessageSize) then begin
@@ -116,6 +117,7 @@ type
           end;
           var lError := Encoding.UTF8.GetString(lBytes);
           Log($"lError {lError}");
+          Nak(lMessageID, lError);
           if not DataConnection.ReadUInt16LE(out var lEtx) then
             if lEtx ≠ $2222 then
               raise new ChatException($"Expected end of package marker, received {Convert.ToHexString(lEtx)}.");
@@ -158,7 +160,7 @@ type
       ReceivePackage(lPackage);
     end;
 
-    method SendAuthentication(aUserID: Guid; aAuthenticationCode: Guid): future Boolean;
+    method SendAuthentication(aUserID: Guid; aAuthenticationCode: Guid; aTimeout: TimeSpan := TimeSpan.FromSeconds(10)): Boolean;
     begin
       Log($"SendAuthentication");
       DataConnection.WriteUInt16LE($0000);
@@ -169,7 +171,9 @@ type
       DataConnection.WriteGuid(aUserID);
       DataConnection.WriteGuid(aAuthenticationCode);
       DataConnection.WriteUInt16LE($ffff);
-      //var lResponse := WaitForResponse(lMessageID);
+      Log($"wating");
+      var lResponse := WaitForResponse(lMessageID, aTimeout);
+      Log($"lResponse {lResponse}");
     end;
 
     method SendPackage(aPackage: Package);
@@ -235,9 +239,44 @@ type
         inc(fNextMessageID);
       end;
       {$ELSE}
-      interlockedInc(var fNextMessageID);
+      result := interlockedInc(var fNextMessageID);
       {$ENDIF}
-      Log($"result {result}");
+    end;
+
+    method WaitForResponse(aMessageID: Integer; aTimeout: TimeSpan): Boolean;
+    begin
+      var lResult: Boolean;
+      var lError: String;
+      var lEvent := new &Event withState(false) Mode(EventMode.Manual);
+      OnAck += (m) -> begin if m = aMessageID then begin
+        Log($"ack {m}");
+          lResult := true;
+          lEvent.Set;
+        end;
+      end;
+      OnNak += (m, e) -> begin if m = aMessageID then begin
+          lResult := false;
+          lError := e;
+          lEvent.Set;
+        end;
+      end;
+      lEvent.WaitFor(aTimeout);
+      result := lResult;
+    end;
+
+    event OnAck: block(aMessageID: Integer);
+    event OnNak: block(aMessageID: Integer; aError: String);
+
+    method Ack(aMessageID: Integer);
+    begin
+      if assigned(OnAck) then
+        OnAck(aMessageID);
+    end;
+
+    method Nak(aMessageID: Integer; aError: String);
+    begin
+      if assigned(OnNak) then
+        OnNak(aMessageID, aError);
     end;
 
     method ReceivePackage(aPackage: not nullable Package);
