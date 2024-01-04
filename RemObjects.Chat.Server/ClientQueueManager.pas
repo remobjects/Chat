@@ -2,7 +2,8 @@
 
 uses
   RemObjects.Infrastructure,
-  RemObjects.Chat;
+  RemObjects.Chat,
+  RemObjects.Chat.Connection;
 
 type
   ClientQueueManager = public abstract class
@@ -37,6 +38,11 @@ type
     property UserID: not nullable Guid;
   end;
 
+  IIPClientQueue = public interface
+    property Connection: nullable IPChatConnection;
+  end;
+
+
   DefaultClientQueueManager<Q> = public class(ClientQueueManager)
   where Q is IClientQueue, Q has constructor;
   protected
@@ -58,11 +64,11 @@ type
     method AcknowledgeReceiptOfOutgoingPackets(aIDs: array of Guid);
   end;
 
-  InMemoryClientQueue = public class(PersistentQueue<Package>, IClientQueue, IInjectableClientQueue)
+  InMemoryClientQueue = public class(PersistentQueue<Package>, IClientQueue, IIPClientQueue, IInjectableClientQueue)
   public
 
     property UserID: not nullable Guid; required;
-    property Connection: nullable Object;
+    property Connection: nullable IPChatConnection;
 
     method SavePacket(aPackage: Package); override;
     begin
@@ -74,9 +80,11 @@ type
     begin
       if assigned(Connection) then begin
         var lLastSent := fOutgoingPackages.Count-1;
+        //Log($"{fOutgoingPackages.Count} packages to send");
         for i := 0 to fOutgoingPackages.Count-1 do
-          DoSendPacket(fOutgoingPackages[i]);
-        fOutgoingPackages.RemoveRange(0, lLastSent);
+          Connection.SendPackage(fOutgoingPackages[i]);
+        fOutgoingPackages.RemoveRange(0, lLastSent+1); {$HINT don't eremove until we know it's delivered?}
+        //Log($"{fOutgoingPackages.Count} packages left to send");
       end
       else begin
         Log($"Currently there is no live client connection for user '{UserID}'.");
@@ -85,7 +93,8 @@ type
 
     method DoSendPacket(aPackage: Package); override;
     begin
-      Log($"Pretend-sending {aPackage}");
+      //if assigned(Connection) then
+        //Connection.SendPackage(aPackage);
     end;
 
     method ReceivePackages;

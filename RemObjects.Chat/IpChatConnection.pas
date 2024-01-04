@@ -10,7 +10,7 @@ type
   protected
   public
 
-    property UserID: Guid read private write;
+    property UserID: nullable Guid read private write;
 
     constructor(aServer: not nullable IIPChatServer; aDataConnection: not nullable Connection);
     begin
@@ -21,7 +21,15 @@ type
     constructor(aClient: not nullable IPChatClient; aDataConnection: not nullable Connection);
     begin
       Client := aClient;
+      UserID := aClient.UserID;
       DataConnection := aDataConnection;
+      async try
+        Work;
+        Dispose;
+      except
+        on E: Exception do
+          Log($"Exception on connection thread: {E}");
+      end;
     end;
 
     method Dispose;
@@ -30,12 +38,14 @@ type
       DataConnection:Dispose;
     end;
 
+    property IsServer: Boolean read assigned(Server);
+    property IsClient: Boolean read assigned(Client);
     property DataConnection: not nullable Connection;
 
     method Work;
     begin
       while DataConnection.ReadUInt16LE(out var lType) do begin
-        Log($"lType {Convert.ToHexString(lType)}");
+        Log($"Incoming packet of type ${Convert.ToHexString(lType, 4)}.");
         case lType of
           $0000: ReadMessage;
           $1111: ReadSuccessResponse;
@@ -45,7 +55,7 @@ type
         end;
         Log($"done work loop");
       end;
-      Log($"done work");
+      Log(if IsServer then $"Client {UserID} disconnected" else $"Server closed the connection");
     end;
 
     method ReadMessage;
@@ -66,7 +76,6 @@ type
           end;
           if not DataConnection.ReadUInt16LE(out var lEtx) then
             raise new ChatException($"Comnection closed reading end pf package marker.");
-          Log($"lEtx {Convert.ToHexString(lEtx)}");
           if lEtx ≠ $ffff then
             raise new ChatException($"Expected end of package marker, received {Convert.ToHexString(lEtx)}.");
           SendAck(lMessageID);
@@ -88,15 +97,29 @@ type
 
     method ReadSuccessResponse;
     begin
-      if DataConnection.ReadUInt32LE(out var lSize) and (lSize < MaxPackageSize) then begin
-
-      end;
+      if DataConnection.ReadUInt32LE(out var lMessageID) then
+        if not DataConnection.ReadUInt16LE(out var lEtx) then
+          if lEtx ≠ $2222 then
+            raise new ChatException($"Expected end of package marker, received {Convert.ToHexString(lEtx)}.");
     end;
 
     method ReadErrorResponse;
     begin
-      if DataConnection.ReadUInt32LE(out var lSize) and (lSize < MaxPackageSize) then begin
-
+      if DataConnection.ReadUInt32LE(out var lMessageID) then begin
+        if DataConnection.ReadUInt32LE(out var lSize) and (lSize < MaxErrorMessageSize) then begin
+          var lBytes := new Byte[lSize];
+          var lOffset := 0;
+          while lSize > 0 do begin
+            var lRead := DataConnection.Read(lBytes, lOffset, lSize);
+            dec(lSize, lRead);
+            inc(lOffset, lRead);
+          end;
+          var lError := Encoding.UTF8.GetString(lBytes);
+          Log($"lError {lError}");
+          if not DataConnection.ReadUInt16LE(out var lEtx) then
+            if lEtx ≠ $2222 then
+              raise new ChatException($"Expected end of package marker, received {Convert.ToHexString(lEtx)}.");
+        end;
       end;
     end;
 
@@ -104,6 +127,7 @@ type
 
     method ReadAuthentication(aMessageID: UInt64; aSize: UInt32);
     begin
+      Log($"ReadAuthentication #{aMessageID}");
       if not assigned(Server) then
         raise new ChatException($"Unexpected Package type {TYPE_AUTH} for client.");
       if aSize ≠ Guid.Size*2 then
@@ -121,7 +145,7 @@ type
 
     method ReadPackage(aMessageID: UInt64; aSize: UInt32);
     begin
-      Log($"ReadPackage {aMessageID} {Convert.ToHexString(aSize)}");
+      Log($"ReadPackage #{aMessageID} size {Convert.ToHexString(aSize)}");
       var lBytes := new Byte[aSize];
       var lOffset := 0;
       while lOffset < aSize do begin
@@ -131,7 +155,7 @@ type
         inc(lOffset, lRead);
       end;
       var lPackage := new Package withByteArray(lBytes);
-      Server.ReceivePackage(self, lPackage);
+      ReceivePackage(lPackage);
     end;
 
     method SendAuthentication(aUserID: Guid; aAuthenticationCode: Guid): future Boolean;
@@ -150,7 +174,7 @@ type
 
     method SendPackage(aPackage: Package);
     begin
-      Log($"SendPackage");
+      Log(if IsServer then $"SendPackage {aPackage.Type} to user {UserID} via {DataConnection}" else $"SendPackage {aPackage.Type}");
       DataConnection.WriteUInt16LE($0000);
       var lMessageID := NextID;
       DataConnection.WriteUInt32LE(lMessageID);
@@ -186,6 +210,7 @@ type
     end;
 
     const MaxPackageSize = 512 000;
+    const MaxErrorMessageSize = 512;
 
     const TYPE_AUTH = $01;
     const TYPE_PACKAGE = $02;
@@ -212,7 +237,15 @@ type
       {$ELSE}
       interlockedInc(var fNextMessageID);
       {$ENDIF}
+      Log($"result {result}");
     end;
+
+    method ReceivePackage(aPackage: not nullable Package);
+    begin
+      Server:ReceivePackage(self, aPackage);
+      Client:ReceivePackage(self, aPackage);
+    end;
+
 
   end;
 

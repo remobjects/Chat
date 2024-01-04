@@ -25,6 +25,13 @@ type
       fChatConnection := nil;
     end;
 
+  assembly
+
+    method ReceivePackage(aConnection: not nullable IPChatConnection; aPackage: not nullable Package);
+    begin
+      Receive(aPackage);
+    end;
+
   private
 
     method Send(aPackage: not nullable Package);

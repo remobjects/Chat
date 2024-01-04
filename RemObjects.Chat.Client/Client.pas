@@ -96,7 +96,10 @@ type
                 SendStatusResponse(aPackage, PackageType.Decrypted, DateTime.UtcNow);
                 lChat.AddMessage(lMessage);
               except
-                SendStatusResponse(aPackage, PackageType.FailedToDecrypt, DateTime.UtcNow);
+                on E: Exception do begin
+                  Log($"E {E}");
+                  SendStatusResponse(aPackage, PackageType.FailedToDecrypt, DateTime.UtcNow);
+                end;
               end;
             end;
           PackageType.FailedToDecrypt: begin
@@ -182,13 +185,17 @@ type
     begin
       var lMessage := fMessages[aMessageID];
       if assigned(lMessage) then begin
-        if lMessage.SendCount < MaximujmDeliveryAttempts then begin
-          SendMessage(lMessage);
-        end
-        else begin
-          var lChat := FindChat(lMessage.ChatID);
-          lChat.SetMessageStatus(lMessage.ID, PackageType.FailedToDecrypt);
+        var lChat := FindChat(lMessage.ChatID);
+        if assigned(lChat.OtherUser) then begin
+          RefreshPublicKey(lChat.OtherUser);
+          Log($"refreshed");
         end;
+        //if lMessage.SendCount < MaximujmDeliveryAttempts then begin
+          //SendMessage(lMessage);
+        //end
+        //else begin
+          lChat.SetMessageStatus(lMessage.ID, PackageType.FailedToDecrypt);
+        //end;
       end;
     end;
 
@@ -213,10 +220,11 @@ type
       result.Signature := OwnKeyPair.SignWithPrivateKey(lData);
 
       //Log($"-- encode --");
-      //Log($"lStringData {lStringData}");
-      //Log($"lData {lData.ToHexString}");
-      //Log($"lEncryptedMessage {result.EncryptedMessage.ToHexString}");
-      //Log($"lSignature        {result.Signature}");
+      //Log($"StringData       {Convert.ToHexString(length(lStringData), 8)} {lStringData}");
+      //Log($"lata             {Convert.ToHexString(length(lData), 8)} {lData.ToHexString}");
+      //Log($"EncryptedMessage {Convert.ToHexString(length(result.EncryptedMessage), 8)} {result.EncryptedMessage.ToHexString}");
+      //Log($"Signature        {Convert.ToHexString(length(result.Signature), 8)} {result.Signature.ToHexString}");
+      //Log($"PublicKey        {Convert.ToHexString(length(aChat.PublicKey.GetPublicKey), 8)} {aChat.PublicKey.GetPublicKey.ToHexString(" ", 16)}");
     end;
 
     //method DecodeMessage(aPackage: Package): MessageInfo;
@@ -239,14 +247,20 @@ type
         raise new Exception($"Unexpecyted payload type '{typeOf(aPackage.Payload)}' for message");
       var lPayload := aPackage.Payload as MessagePayload;
 
+      //Log($"-- decode --");
+      //Log($"Signature        {Convert.ToHexString(length(lPayload.Signature), 8)} {lPayload.Signature.ToHexString}");
+      //Log($"EncryptedMessage {Convert.ToHexString(length(lPayload.EncryptedMessage), 8)} {lPayload.EncryptedMessage.ToHexString}");
+
       case aChat.Type of
         ChatType.Private: begin
+            //Log($"OwnPrivateKey    {Convert.ToHexString(length(OwnKeyPair:GetPrivateKey), 8)} {OwnKeyPair:GetPrivateKey.ToHexString(" ", 16)}");
             var lDecryptedMessage := OwnKeyPair.DecryptWithPrivateKey(lPayload.EncryptedMessage);
             var lString := Encoding.UTF8.GetString(lDecryptedMessage);
 
             result.Payload := JsonDocument.FromString(lString);
 
-            if assigned(result.Sender:PublicKey) then begin
+            Log($"PublicKey        {Convert.ToHexString(length(result.Sender:PublicKey:GetPublicKey), 8)} {result.Sender:PublicKey:GetPublicKey.ToHexString}");
+            if result.Sender:PublicKey:HasPublicKey then begin
               result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, lPayload.Signature);
               if not result.SignatureValid then begin
                 if RefreshPublicKey(result.Sender) then
@@ -312,7 +326,15 @@ type
     method RefreshPublicKey(aPerson: UserInfo): Boolean;
     begin
       var lNewUserInfo := ChatControllerProxy.FindUser(aPerson.ID);
-      aPerson.PublicKey := lNewUserInfo.PublicKey;
+      result := aPerson.PublicKeyData ≠ lNewUserInfo.PublicKeyData;
+      if result then begin
+        Log($"new key");
+        aPerson.PublicKeyData := lNewUserInfo.PublicKeyData;
+      end
+      else begin
+        Log($"no new key");
+      end;
+
     end;
 
   end;

@@ -430,7 +430,7 @@ type
         fKey.ImportRSAPublicKey(aPublicKeyData, out var nil);
       if assigned(aPrivateKeyData) then
         fKey.ImportPkcs8PrivateKey(aPrivateKeyData, out var nil);
-        {$ENDIF}
+      {$ENDIF}
     end;
 
     {$IF TOFFEE}
@@ -541,6 +541,7 @@ type
       try
         result := assigned(fKey:ExportParameters(true):D);
       except
+        on E: CryptographicException do;
       end;
       {$ENDIF}
     end;
