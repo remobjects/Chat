@@ -42,7 +42,6 @@ type
         var lQueue := ClientQueueManager.ActiveClientQueueManager.FindClientQueue(aUserID);
 
         result := new HubClient(Hub := self, User := lUserInfo, Queue := lQueue);
-
       end;
     end;
 
