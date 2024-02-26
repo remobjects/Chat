@@ -110,6 +110,11 @@
       <HintPath>\Users\mh\Code\RemObjects\internetpack\Bin\NETStandard2.0\RemObjects.InternetPack.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <ProjectReference Include="..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure\RemObjects.Infrastructure.elements">
+      <Project>{9e2cdcfc-3ae2-49fa-bccb-0b694279837a}</Project>
+      <ProjectFile>..\..\..\RemObjects\Infrastructure\RemObjects.Infrastructure\RemObjects.Infrastructure.elements</ProjectFile>
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup Condition="'$(Target)' == 'Android'">
     <Reference Include="elements">
