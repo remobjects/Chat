@@ -28,6 +28,7 @@
   <ItemGroup>
     <Reference Include="Echoes">
       <Private>True</Private>
+      <HintPath>\Users\mh\Code\RemObjects\RTL2\Source\bin\Debug\NETStandard\Echoes.dll</HintPath>
     </Reference>
     <Reference Include="Elements">
       <Private>True</Private>

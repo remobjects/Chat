@@ -32,6 +32,8 @@
     <SubMode>iOS</SubMode>
     <OutputType>StaticLibrary</OutputType>
     <BinaryName>RemObjectsChat</BinaryName>
+    <SDK>iOS</SDK>
+    <DeploymentTargetVersion>17.0</DeploymentTargetVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Target)' == 'macOS' ">
     <Mode>Toffee</Mode>
@@ -39,6 +41,7 @@
     <EntitlementsFile>.\Entitlements.entitlements</EntitlementsFile>
     <OutputType>StaticLibrary</OutputType>
     <BinaryName>RemObjectsChat</BinaryName>
+    <SDK>macOS</SDK>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Target)' == 'Echoes' ">
     <Mode>Echoes</Mode>
@@ -54,10 +57,6 @@
   </ItemGroup>
   <ItemGroup Condition="'$(Target)' == 'macOS'">
     <Reference Include="Security" />
-    <Reference Include="RemObjects.Elements.Serialization">
-      <HintPath>\Users\mh\Code\RemObjects\Serialization\Source\Bin\Debug\RemObjects.Elements.Serialization.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="libElements">
       <HintPath>\Users\mh\Code\RemObjects\RTL2\Source\bin\Debug\macOS\libElements.fx</HintPath>
       <Private>True</Private>
@@ -89,6 +88,10 @@
     </Reference>
     <Reference Include="RemObjects.InternetPack">
       <HintPath>\Users\mh\Code\RemObjects\internetpack\Bin\NETStandard2.0\RemObjects.InternetPack.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Echoes">
+      <HintPath>\Users\mh\Code\RemObjects\RTL2\Source\bin\Debug\NETStandard\Echoes.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>

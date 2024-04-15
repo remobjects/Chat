@@ -76,7 +76,6 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="libInternetPack">
-      <HintPath>\Users\mh\Code\RemObjects\internetpack\Bin\macOS\libInternetPack.fx</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
