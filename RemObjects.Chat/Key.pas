@@ -177,7 +177,7 @@ type
       lKeychainItem[bridge<id>(Security.kSecValueData)] := GetPrivateKeyAsNSData;
 
       var status := Security.SecItemAdd(bridge<CoreFoundation.CFDictionaryRef>(lKeychainItem), nil);
-      Log($"status {status}");
+      //Log($"status {status}");
       if status ≠ Security.errSecSuccess then
         raise new Exception($"Failed to save key: {StringFromOSStatus(status)}");
     end;
@@ -422,7 +422,7 @@ type
       if assigned(aPublicKeyData) then
         LoadKeyFromData(aPublicKeyData, Security.kSecAttrKeyClassPublic);
       if assigned(aPrivateKeyData) then
-        LoadKeyFromData(aPublicKeyData, Security.kSecAttrKeyClassPrivate);
+        LoadKeyFromData(aPrivateKeyData, Security.kSecAttrKeyClassPrivate);
       {$ENDIF}
       {$IF ECHOES}
       fKey := System.Security.Cryptography.RSA.Create;
@@ -446,7 +446,7 @@ type
                                                   bridge<CoreFoundation.CFDictionaryRef>(lKeyDict),
                                                   @lError);
       if assigned(lError) then
-        raise new Exception($"Failed to load key: {bridge<Foundation.NSError>(lError)}");
+        raise new Exception($"Failed to load {bridge<String>(aKeyClass)} key: {bridge<Foundation.NSError>(lError)}");
     end;
 
     class method HashSHA256(aData: array of Byte): array of Byte;
