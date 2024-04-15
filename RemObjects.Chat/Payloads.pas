@@ -3,9 +3,16 @@
 type
   IPayload = public interface
     method ToByteArray: array of Byte;
+
     method Save(aFilename: String);
     method Load(aFilename: String);
     method Load(aBytes: array of Byte; aOffset: Integer := 0);
+
+    method ToBase64: String;
+    begin
+      result := Convert.ToBase64String(ToByteArray);
+    end;
+
   end;
 
   //
