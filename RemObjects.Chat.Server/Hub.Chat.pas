@@ -47,6 +47,7 @@ type
             var lMessage := CreateMessage(aPackage);
             Log($"Server: New message received: {lMessage}");
             DeliverMessage(lMessage) ToAllBut(aPackage.SenderID);
+            ChatManager.ActiveChatManager.MessageReceived(self, aPackage.SenderID, lMessage);
             SendStatusResponse(lMessage, Guid.Empty, PackageType.Received, DateTime.UtcNow);
           end;
         PackageType.Received: raise new Exception("Should not happen on server");

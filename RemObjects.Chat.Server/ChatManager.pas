@@ -22,6 +22,8 @@ type
 
     method FindUser(aUserID: not nullable Guid): UserInfo; abstract;
 
+    method MessageReceived(aChat: HubChat; aSenderID: Guid; aMessage: HubMessage); abstract;
+
     property ChatAuthentications := new Cache<Guid,Guid>(OneTimeAccess := true);
 
   end;
@@ -82,6 +84,11 @@ type
     method FindUser(aUserID: not nullable Guid): UserInfo; override;
     begin
       result := fUsers[aUserID];
+    end;
+
+    method MessageReceived(aChat: HubChat; aSenderID: Guid; aMessage: HubMessage); override;
+    begin
+      Log($"Message Received: {aMessage}");
     end;
 
     method __AddUser(aUser: UserInfo);

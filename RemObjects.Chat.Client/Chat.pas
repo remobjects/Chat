@@ -65,20 +65,31 @@ type
     // GroupChat
     property SharedKeyPair: KeyPair;
 
+    property NewMessageReceived: NewMessageReceivedBlock;
+    property MessageStatusChanged: MessageStatusChangedBlock;
+
+    property Messages: ImmutableList<MessageInfo> read fMessages;
+
   assembly
 
     method AddMessage(aMessage: MessageInfo);
     begin
       fMessages.Add(aMessage);
+      if assigned(NewMessageReceived) then
+        NewMessageReceived(aMessage);
     end;
 
     method SetMessageStatus(aMessageID: not nullable Guid; aStatus: PackageType);
     begin
-      //fMessages.Add(aMessage);
+      if assigned(NewMessageReceived) then
+        MessageStatusChanged(aMessageID, aStatus);
     end;
 
     var fMessages := new List<MessageInfo>; private;
 
   end;
+
+  NewMessageReceivedBlock nested in Chat = public block(aMessage: MessageInfo);
+  MessageStatusChangedBlock nested in Chat = public block(aMessageID: not nullable Guid; aStatus: PackageType);
 
 end.

@@ -58,7 +58,7 @@ type
     //
     //
 
-    method Connect(aHostName: String; aPort: Integer; aAuthenticationCode: Guid);
+    method Connect(aHostName: not nullable String; aPort: Integer; aAuthenticationCode: not nullable Guid);
     begin
       if not assigned(fIPClient) then begin
         fIPClient := new IPChatClient(HostName := aHostName, Port := aPort, UserID := UserID);
@@ -74,6 +74,8 @@ type
 
     var fIPClient: IPChatClient; private;
 
+    property NewMessageReceived: block(aChat: Chat; aMessage: MessageInfo);
+    property MessageStatusChanged: block(aChat: Chat; aMessageID: Guid; aStatus: PackageType);
 
     //
     // incoming packages
@@ -95,6 +97,8 @@ type
                 Log($"Client: decrypted message: {lMessage.Payload}");
                 SendStatusResponse(aPackage, PackageType.Decrypted, DateTime.UtcNow);
                 lChat.AddMessage(lMessage);
+                if assigned(NewMessageReceived) then
+                  NewMessageReceived(lChat, lMessage);
               except
                 on E: Exception do begin
                   Log($"E {E}");
@@ -116,6 +120,8 @@ type
           PackageType.Read: begin
               var lChat := FindChat(aPackage.ChatID);
               lChat.SetMessageStatus(aPackage.MessageID, aPackage.Type);
+              if assigned(MessageStatusChanged) then
+                MessageStatusChanged(lChat, aPackage.MessageID, aPackage.Type);
               Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}");
             end;
         end;

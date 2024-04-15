@@ -90,7 +90,7 @@ type
         lChat.OnReceivePackage(aPackage);
       except
         on E: Exception do
-          Log($"{E.Message}");
+          Log($"Exception propcessing package: {E}");
       end;
     end;
 
