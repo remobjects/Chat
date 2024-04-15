@@ -31,8 +31,10 @@ type
     begin
       if ChatManager.ActiveChatManager.ChatAuthentications[aAuthenticationCode] = aUserID then begin
         fConnections[aUserID] := aConnection;
-        if ClientQueueManager.ActiveClientQueueManager.FindClientQueue(aUserID) is var lQueue: IIPClientQueue then
+        if ClientQueueManager.ActiveClientQueueManager.FindClientQueue(aUserID) is var lQueue: IIPClientQueue then begin
+          aConnection.OnDisconnect := () -> begin lQueue.Connection := nil; end;
           lQueue.Connection := aConnection;
+        end;
         result := true;
       end;
       //

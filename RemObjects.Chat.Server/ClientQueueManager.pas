@@ -64,11 +64,29 @@ type
     method AcknowledgeReceiptOfOutgoingPackets(aIDs: array of Guid);
   end;
 
-  InMemoryClientQueue = public class(PersistentQueue<Package>, IClientQueue, IIPClientQueue, IInjectableClientQueue)
+  ConnectedQueue = public abstract class(PersistentQueue<Package>)
   public
 
     property UserID: not nullable Guid; required;
-    property Connection: nullable IPChatConnection;
+    property Connection: nullable IPChatConnection read begin
+      result := fConnection;
+    end write begin
+      if fConnection ≠ value then begin
+        Log(if assigned(value) then $"Queue got live connection for user {UserID}." else $"Queue lost live connection for user {UserID}.");
+        fConnection := value;
+        if assigned(value) then
+          SendPackets;
+      end;
+    end;
+
+  private
+    var fConnection: nullable IPChatConnection;
+
+  end;
+
+  InMemoryClientQueue = public class(ConnectedQueue, IClientQueue, IIPClientQueue, IInjectableClientQueue)
+  public
+
 
     method SavePacket(aPackage: Package); override;
     begin
@@ -78,13 +96,28 @@ type
 
     method SendPackets; override; locked on self;
     begin
-      if assigned(Connection) then begin
-        var lLastSent := fOutgoingPackages.Count-1;
-        //Log($"{fOutgoingPackages.Count} packages to send");
-        for i := 0 to fOutgoingPackages.Count-1 do
-          Connection.SendPackage(fOutgoingPackages[i]);
-        fOutgoingPackages.RemoveRange(0, lLastSent+1); {$HINT don't eremove until we know it's delivered?}
-        //Log($"{fOutgoingPackages.Count} packages left to send");
+      if assigned(Connection) and not Connection:Disconnected then begin
+
+        try
+          Log($"Sending {fOutgoingPackages.Count} packages");
+          var lLastSent := fOutgoingPackages.Count-1;
+          //Log($"{fOutgoingPackages.Count} packages to send");
+          for i := 0 to fOutgoingPackages.Count-1 do
+            Connection.SendPackage(fOutgoingPackages[i]);
+          fOutgoingPackages.RemoveRange(0, lLastSent+1); {$HINT don't remove until we know it's delivered?}
+          //Log($"{fOutgoingPackages.Count} packages left to send");
+
+        except
+          on E: System.ObjectDisposedException do begin
+            Log($"Live client connection for user '{UserID}' was closed/lost.");
+            Connection := nil;
+          end;
+          on E: Exception do begin
+            Log($"Exception sending packets: {E}");
+          end;
+
+        end;
+
       end
       else begin
         Log($"Currently there is no live client connection for user '{UserID}'.");

@@ -42,6 +42,10 @@ type
     property IsClient: Boolean read assigned(Client);
     property DataConnection: not nullable Connection;
 
+    property Disconnected: Boolean read private write;
+    property OnDisconnect: block(aConnection: IPChatConnection);
+
+
     method Work;
     begin
       while DataConnection.ReadUInt16LE(out var lType) do begin
@@ -56,6 +60,9 @@ type
         Log($"done work loop");
       end;
       Log(if IsServer then $"Client {UserID} disconnected" else $"Server closed the connection");
+      Disconnected := true;
+      if assigned(OnDisconnect) then
+        OnDisconnect(self);
     end;
 
     method ReadChunk;
@@ -178,7 +185,7 @@ type
 
     method SendPackage(aPackage: Package);
     begin
-      Log(if IsServer then $"SendPackage {aPackage.Type} to user {UserID} via {DataConnection}" else $"SendPackage {aPackage.Type}");
+      //Log(if IsServer then $"SendPackage {aPackage.Type} to user {UserID} via {DataConnection}" else $"SendPackage {aPackage.Type}");
       DataConnection.WriteUInt16LE($0000);
       var lChunkID := NextID;
       DataConnection.WriteUInt32LE(lChunkID);
