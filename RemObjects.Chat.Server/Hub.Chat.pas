@@ -31,9 +31,14 @@ type
     method DeliverMessage(aMessage: HubMessage) ToAllBut(aAllButUserID: nullable Guid);
     begin
       var lPackage := aMessage.OriginalPackage;
-      for each u in UserIDs do
-        if u ≠ aAllButUserID then
+      for each u in UserIDs do begin
+        if u ≠ aAllButUserID then try
           Hub.FindClient(u).Send(lPackage);
+        except
+          on E: Exception do
+            Log($"Could not deliver message to {u}:  {E}");
+        end;
+      end;
     end;
 
     //
@@ -48,17 +53,24 @@ type
             Log($"Server: New message received: {lMessage}");
             DeliverMessage(lMessage) ToAllBut(aPackage.SenderID);
             ChatManager.ActiveChatManager.MessageReceived(self, aPackage.SenderID, lMessage);
-            SendStatusResponse(lMessage, Guid.Empty, PackageType.Received, DateTime.UtcNow);
+            SendStatusResponse(lMessage, nil, MessageStatus.Received, DateTime.UtcNow);
           end;
-        PackageType.Received: raise new Exception("Should not happen on server");
-        PackageType.Delivered,
-        PackageType.Decrypted,
-        PackageType.FailedToDecrypt,
-        PackageType.Displayed,
-        PackageType.Read: begin
-            Log($"Server: New status received for {aPackage.MessageID}: {aPackage.Type}");
-            NotifyStatus(aPackage);
+        PackageType.Status: begin
+            var lStatus := (aPackage.Payload as StatusPayload).Status;
+            case lStatus of
+              MessageStatus.Received: raise new Exception("Should not happen on server");
+              MessageStatus.Delivered,
+              MessageStatus.Decrypted,
+              MessageStatus.FailedToDecrypt,
+              MessageStatus.Displayed,
+              MessageStatus.Read: begin
+                  Log($"Server: New status received for {aPackage.MessageID}: {aPackage.Type}");
+                  NotifyStatus(aPackage);
+                end;
+              else raise new Exception($"Unexpected Message Status {lStatus}")
+            end;
           end;
+        else raise new Exception($"Unexpected Package Type {aPackage.Type}");
       end;
     end;
 
@@ -68,20 +80,25 @@ type
     begin
       var lMessage := Hub.FindMessage(aPackage);
       case aPackage.Type of
-        PackageType.Received: ;{no-op}
-        PackageType.Delivered: lMessage.Delivered := aPackage.Sent;
-        PackageType.Decrypted: lMessage.Decryted := aPackage.Sent;
-        PackageType.FailedToDecrypt: ;
-        PackageType.Displayed: lMessage.Displayed := aPackage.Sent;
-        PackageType.Read: lMessage.Read := aPackage.Sent;
-        else raise new Exception($"Unexpected package type {aPackage.Type}");
+        PackageType.Status: begin
+            var lStatus := (aPackage.Payload as StatusPayload).Status;
+            case lStatus of
+              MessageStatus.Received: ;{no-op}
+              MessageStatus.Delivered: lMessage.Delivered := aPackage.Sent;
+              MessageStatus.Decrypted: lMessage.Decryted := aPackage.Sent;
+              MessageStatus.FailedToDecrypt: ;
+              MessageStatus.Displayed: lMessage.Displayed := aPackage.Sent;
+              MessageStatus.Read: lMessage.Read := aPackage.Sent;
+              else raise new Exception($"Unexpected message status {lStatus}");
+            end;
+            SendStatusResponse(lMessage, aPackage.SenderID, lStatus, aPackage.Sent);
+          end;
       end;
-      SendStatusResponse(lMessage, aPackage.SenderID, aPackage.Type, aPackage.Sent);
     end;
 
-    method SendStatusResponse(aMessage: HubMessage; aSenderID: not nullable Guid; aStatus: PackageType; aDate: DateTime);
+    method SendStatusResponse(aMessage: HubMessage; aSenderID: nullable Guid; aStatus: MessageStatus; aDate: DateTime);
     begin
-      var lPackage := new Package(&Type := aStatus,
+      var lPackage := new Package(&Type := PackageType.Status,
                                   ID := Guid.NewGuid,
                                   SenderID := aSenderID,
                                   ChatID := ChatID,
@@ -90,7 +107,6 @@ type
                                                                Date := DateTime.UtcNow));
       Hub.SendPackage(aMessage.SenderID, lPackage);
     end;
-
 
   end;
 

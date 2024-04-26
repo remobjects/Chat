@@ -79,7 +79,7 @@ type
         NewMessageReceived(aMessage);
     end;
 
-    method SetMessageStatus(aMessageID: not nullable Guid; aStatus: PackageType);
+    method SetMessageStatus(aMessageID: not nullable Guid; aStatus: MessageStatus);
     begin
       if assigned(NewMessageReceived) then
         MessageStatusChanged(aMessageID, aStatus);
@@ -90,6 +90,6 @@ type
   end;
 
   NewMessageReceivedBlock nested in Chat = public block(aMessage: MessageInfo);
-  MessageStatusChangedBlock nested in Chat = public block(aMessageID: not nullable Guid; aStatus: PackageType);
+  MessageStatusChangedBlock nested in Chat = public block(aMessageID: not nullable Guid; aStatus: MessageStatus);
 
 end.
