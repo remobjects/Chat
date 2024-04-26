@@ -397,6 +397,8 @@ type
 
     method LoadFromFiles(aPublicKeyFile: String; aPrivateKeyFile: String; aFormat: KeyFormat);
     begin
+      Log($"{aPublicKeyFile}:FileExists {aPublicKeyFile:FileExists}");
+      Log($"{aPrivateKeyFile}:FileExists {aPrivateKeyFile:FileExists}");
       case aFormat of
         KeyFormat.Bytes: LoadFromBytes(if aPublicKeyFile:FileExists then File.ReadBytes(aPublicKeyFile),
                                        if aPrivateKeyFile:FileExists then File.ReadBytes(aPrivateKeyFile));
@@ -420,9 +422,9 @@ type
     begin
       {$IF TOFFEE}
       if assigned(aPublicKeyData) then
-        LoadKeyFromData(aPublicKeyData, Security.kSecAttrKeyClassPublic);
+        fPublicKey := LoadKeyFromData(aPublicKeyData, Security.kSecAttrKeyClassPublic);
       if assigned(aPrivateKeyData) then
-        LoadKeyFromData(aPrivateKeyData, Security.kSecAttrKeyClassPrivate);
+        fPrivateKey := LoadKeyFromData(aPrivateKeyData, Security.kSecAttrKeyClassPrivate);
       {$ENDIF}
       {$IF ECHOES}
       fKey := System.Security.Cryptography.RSA.Create;
@@ -434,7 +436,7 @@ type
     end;
 
     {$IF TOFFEE}
-    method LoadKeyFromData(aData: array of Byte; aKeyClass: CoreFoundation.CFStringRef);
+    method LoadKeyFromData(aData: array of Byte; aKeyClass: CoreFoundation.CFStringRef): SecKeyRef;
     begin
       var lError: CoreFoundation.CFErrorRef;
       var lKeyDict := new Foundation.NSMutableDictionary;
@@ -442,9 +444,10 @@ type
       lKeyDict[bridge<id>(Security.kSecAttrKeyType)] := bridge<id>(Security.kSecAttrKeyTypeRSA);
       lKeyDict[bridge<id>(Security.kSecAttrKeyClass)] := bridge<id>(aKeyClass);
       lKeyDict[bridge<id>(Security.kSecValueData)] := lData;
-      fPublicKey := Security.SecKeyCreateWithData(bridge<CoreFoundation.CFDataRef>(lData),
+      result := Security.SecKeyCreateWithData(bridge<CoreFoundation.CFDataRef>(lData),
                                                   bridge<CoreFoundation.CFDictionaryRef>(lKeyDict),
                                                   @lError);
+      //Log($"lError {bridge<Foundation.NSError>(lError)}");
       if assigned(lError) then
         raise new Exception($"Failed to load {bridge<String>(aKeyClass)} key: {bridge<Foundation.NSError>(lError)}");
     end;
