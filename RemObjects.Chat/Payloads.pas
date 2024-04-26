@@ -24,6 +24,11 @@ type
 
     constructor; empty;
 
+    constructor (aJson: not nullable JsonDocument);
+    begin
+      Json := aJson;
+    end;
+
     property Json: JsonDocument read private write := new JsonObject;
 
     method ToByteArray: array of Byte; //override;
@@ -43,7 +48,7 @@ type
 
     method Load(aBytes: array of Byte; aOffset: Integer := 0);
     begin
-      Json := JsonDocument.TryFromString(Encoding.UTF8.GetString(aBytes, aOffset));
+      Json := JsonDocument.FromString(Encoding.UTF8.GetString(aBytes, aOffset));
     end;
 
     [ToString]
@@ -75,30 +80,32 @@ type
       Json["signature"] := Convert.ToBase64String(value);
     end;
 
+    property IsEncrypted: nullable Boolean read Json["encrypted"]:BooleanValue write Json["encrypted"];
+
   end;
 
 
   StatusPayload = public class(JsonPayload)
   public
 
-    property Status: PackageType read begin
+    property Status: MessageStatus read begin
       result := case Json["status"]:StringValue of
-        "received": PackageType.Received;
-        "delivered": PackageType.Delivered;
-        "decrypted": PackageType.Decrypted;
-        "failedToDecrypt": PackageType.FailedToDecrypt;
-        "displayed": PackageType.Displayed;
-        "read": PackageType.Read;
+        "received": MessageStatus.Received;
+        "delivered": MessageStatus.Delivered;
+        "decrypted": MessageStatus.Decrypted;
+        "failedToDecrypt": MessageStatus.FailedToDecrypt;
+        "displayed": MessageStatus.Displayed;
+        "read": MessageStatus.Read;
       end;
     end
     write begin
       Json["status"] := case value of
-        PackageType.Received: "received";
-        PackageType.Delivered: "delivered";
-        PackageType.Decrypted: "decrypted";
-        PackageType.FailedToDecrypt: "failedToDecrypt";
-        PackageType.Displayed: "displayed";
-        PackageType.Read: "read";
+        MessageStatus.Received: "received";
+        MessageStatus.Delivered: "delivered";
+        MessageStatus.Decrypted: "decrypted";
+        MessageStatus.FailedToDecrypt: "failedToDecrypt";
+        MessageStatus.Displayed: "displayed";
+        MessageStatus.Read: "read";
       end;
     end;
 
