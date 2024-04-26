@@ -23,6 +23,28 @@ type
       end;
     end;
 
+    [ToString]
+    method ToString: String; override;
+    begin
+      result := $"<{GetType.Name}, {fClientQueues.Count} queues"+Environment.LineBreak+
+                (for each k in fClientQueues.Keys.OrderBy(k -> k.ToString) yield
+                  fClientQueues[k].ToString).JoinedString(Environment.LineBreak)+
+                ">";
+    end;
+
+    constructor;
+    begin
+      Log($"Created {GetType.Name}");
+      async loop try
+        Thread.Sleep(10000);
+        Log($"{ClientQueueManager.ActiveClientQueueManager}");
+      except
+        on E: Exception do
+          Log($"E {E}");
+      end;
+    end;
+
+
   protected
 
     method CreateQueueForUser(aUserID: not nullable Guid): IClientQueue; abstract;
@@ -79,102 +101,13 @@ type
       end;
     end;
 
+    property HasActiveConnection: Boolean read assigned(Connection);
+
   private
     var fConnection: nullable IPChatConnection;
 
   end;
 
-  InMemoryClientQueue = public class(ConnectedQueue, IClientQueue, IIPClientQueue, IInjectableClientQueue)
-  public
 
-
-    method SavePacket(aPackage: Package); override;
-    begin
-      Log($"Queued {aPackage}");
-      fOutgoingPackages.Add(aPackage);
-    end;
-
-    method SendPackets; override; locked on self;
-    begin
-      if assigned(Connection) and not Connection:Disconnected then begin
-
-        try
-          Log($"Sending {fOutgoingPackages.Count} packages");
-          var lLastSent := fOutgoingPackages.Count-1;
-          //Log($"{fOutgoingPackages.Count} packages to send");
-          for i := 0 to fOutgoingPackages.Count-1 do
-            Connection.SendPackage(fOutgoingPackages[i]);
-          fOutgoingPackages.RemoveRange(0, lLastSent+1); {$HINT don't remove until we know it's delivered?}
-          //Log($"{fOutgoingPackages.Count} packages left to send");
-
-        except
-          on E: System.ObjectDisposedException do begin
-            Log($"Live client connection for user '{UserID}' was closed/lost.");
-            Connection := nil;
-          end;
-          on E: Exception do begin
-            Log($"Exception sending packets: {E}");
-          end;
-
-        end;
-
-      end
-      else begin
-        Log($"Currently there is no live client connection for user '{UserID}'.");
-      end;
-    end;
-
-    method DoSendPacket(aPackage: Package); override;
-    begin
-      //if assigned(Connection) then
-        //Connection.SendPackage(aPackage);
-    end;
-
-    method ReceivePackages;
-    begin
-      if assigned(Receive) then begin
-        var lLastReceived := fIncomingPackages.Count-1;
-        for i := 0 to fIncomingPackages.Count-1 do begin
-          Receive(fIncomingPackages[i]);
-        end;
-        locking self do
-          fIncomingPackages.RemoveRange(0, lLastReceived);
-      end;
-    end;
-
-    //
-    //
-    //
-
-    property HasActiveConnection: Boolean read assigned(Connection);
-    property OutgoingPacketCount: Integer read fOutgoingPackages.Count;
-    property OutgoingPackets[aIndex: Integer]: Package read fOutgoingPackages[aIndex];
-
-    method InjectIncomingPacket(aPackage: Package);
-    begin
-      locking self do
-        fIncomingPackages.Add(aPackage);
-      ReceivePackages;
-    end;
-
-    method AcknowledgeReceiptOfOutgoingPackets(aIDs: array of Guid); locked on self;
-    begin
-      var lCount := 0;
-      for i := 0 to fOutgoingPackages.Count-1 do begin
-        if aIDs.Contains(fOutgoingPackages[i].ID) then begin
-          inc(lCount);
-          fOutgoingPackages.RemoveAt(i);
-          if lCount = length(aIDs) then
-            exit;
-        end;
-      end;
-    end;
-
-  private
-
-    fIncomingPackages := new List<Package>;
-    fOutgoingPackages := new List<Package>;
-
-  end;
 
 end.

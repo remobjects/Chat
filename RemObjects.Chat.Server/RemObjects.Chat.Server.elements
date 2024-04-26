@@ -62,6 +62,7 @@
     <Compile Include="Hub.Chat.pas" />
     <Compile Include="ClientQueueManager.pas" />
     <Compile Include="IpChatServer.pas" />
+    <Compile Include="InMemoryClientQueue.pas" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>
