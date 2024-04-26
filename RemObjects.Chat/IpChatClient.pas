@@ -16,11 +16,13 @@ type
       var lConnection := Connect;
       fChatConnection := new IPChatConnection(self, lConnection);
       fChatConnection.SendAuthentication(UserID, aAuthenticationCode);
+      fChatConnection.OnDisconnect := () -> DisconnectFromChat;
     end;
 
     method DisconnectFromChat;
     begin
-      fChatConnection.DataConnection.Close;
+      Log($"DisconnectFromChat");
+      fChatConnection:DataConnection:Close;
       fChatConnection:Dispose;
       fChatConnection := nil;
     end;
@@ -36,10 +38,21 @@ type
 
     method Send(aPackage: not nullable Package);
     begin
-      fPackages.Add(aPackage);
-      fPackagesByID[aPackage.ID] := aPackage;
+      Log($"Sending new package");
+      locking fPackages do
+        fPackages.Add(aPackage);
+      //fPackagesByID[aPackage.ID] := aPackage;
+      Log($"{fPackages.Count} packages pending, has connection? {assigned(fChatConnection)}");
       if assigned(fChatConnection) then begin
-        fChatConnection.SendPackage(aPackage);
+        fChatConnection.SendPackage(aPackage) begin
+          if aSuccess then begin
+            locking fPackages do
+              fPackages.Remove(aPackage);
+          end
+          else begin
+            Log($"ToDo: messages failed to send. what next?");
+          end;
+        end;
       end;
     end;
 
@@ -47,7 +60,7 @@ type
 
     var fChatConnection: IPChatConnection;
     var fPackages := new List<Package>;
-    var fPackagesByID := new Dictionary<Guid,Package>;
+    //var fPackagesByID := new Dictionary<Guid,Package>;
 
   end;
 
