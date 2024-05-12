@@ -76,6 +76,9 @@ type
     begin
       if not assigned(fIPClient) then begin
         fIPClient := new IPChatClient(HostName := aHostName, Port := aPort, UserID := UserID);
+        if not assigned(PackageStore) then
+          raise new /*NullReference*/Exception("PackageStore is not assigned");
+        fIPClient.PackageStore := PackageStore;
         Queue := fIPClient;
       end;
       fIPClient.ConnectToChat(aAuthenticationCode);
@@ -87,6 +90,7 @@ type
     end;
 
     var fIPClient: IPChatClient; private;
+    property PackageStore: PackageStore;
 
     property NewMessageReceived: block(aChat: Chat; aMessage: MessageInfo);
     property MessageStatusChanged: block(aChat: Chat; aMessageID: Guid; aStatus: MessageStatus);

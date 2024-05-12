@@ -147,6 +147,15 @@
     <Compile Include="IpChatServer.pas">
       <VirtualFolder>InternetPack</VirtualFolder>
     </Compile>
+    <Compile Include="PackageStore.pas">
+      <VirtualFolder>Package Stores</VirtualFolder>
+    </Compile>
+    <Folder Include="Package Stores">
+      <Virtual>True</Virtual>
+    </Folder>
+    <Compile Include="InMemoryPackageStore.pas">
+      <VirtualFolder>Package Stores</VirtualFolder>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>

@@ -26,7 +26,7 @@ type
           Log($"> Sending {lPackages.Count} packages");
           //Log($"{fOutgoingPackages.Count} packages to send");
           for each p in lPackages do begin
-            Connection.SendPackage(p) begin
+            Connection.SendPackage_Legacy(p) begin
               if aSuccess then begin
                 locking fOutgoingPackages do
                   fOutgoingPackages.Remove(p);

@@ -17,6 +17,14 @@ type
       fChatConnection := new IPChatConnection(self, lConnection);
       fChatConnection.SendAuthentication(UserID, aAuthenticationCode);
       fChatConnection.OnDisconnect := () -> DisconnectFromChat;
+      fChatConnection.OnAck := (aChunkID) -> begin
+        Log($"+ Successfully sent package with Chunk ID {aChunkID}");
+        PackageStore.RemovePackage(aChunkID);
+      end;
+      fChatConnection:OnNak := (aChunkID, aError) -> begin
+        Log($"- Failed to sent package with Chunk ID {aChunkID}");
+        PackageStore.PackagesByChunk[aChunkID] := nil; // remove chunk but keep the package
+      end;
       ConnectedToChat;
     end;
 
@@ -24,11 +32,15 @@ type
     begin
       if assigned(OnConnect) then
         OnConnect();
+      SendStoredPackages;
     end;
 
     method DisconnectFromChat;
     begin
       Log($"DisconnectFromChat");
+      fChatConnection:OnAck := nil;
+      fChatConnection:OnNak := nil;
+      fChatConnection:OnDisconnect := nil;
       fChatConnection:DataConnection:Close;
       fChatConnection:Dispose;
       fChatConnection := nil;
@@ -39,6 +51,8 @@ type
     property OnConnect: block;
     property OnDisconnect: block;
 
+    property PackageStore: PackageStore;
+
   assembly
 
     method ReceivePackage(aConnection: not nullable IPChatConnection; aPackage: not nullable Package);
@@ -48,31 +62,45 @@ type
 
   private
 
-    method Send(aPackage: not nullable Package);
+    method Send(aPackage: not nullable Package); locked on self;
     begin
       Log($"Sending new package");
-      locking fPackages do
-        fPackages.Add(aPackage);
-      //fPackagesByID[aPackage.ID] := aPackage;
-      Log($"{fPackages.Count} packages pending, has connection? {assigned(fChatConnection)}");
+      PackageStore.SavePackage(aPackage);
+      Log($"{PackageStore.Count} total package(s) pending, has connection? {assigned(fChatConnection)}");
       if assigned(fChatConnection) then begin
         fChatConnection.SendPackage(aPackage) begin
-          if aSuccess then begin
-            locking fPackages do
-              fPackages.Remove(aPackage);
-          end
-          else begin
-            Log($"ToDo: messages failed to send. what next?");
-          end;
+          Log($"Saving initial Chunk ID {aChunkID} for package {aPackage.ID}");
+          PackageStore.PackagesByChunk[aChunkID] := aPackage;
         end;
       end;
     end;
 
+    method SendStoredPackages; locked on self;
+    begin
+      if not assigned(fChatConnection) then
+        exit;
+
+      var lPackages := PackageStore.Snapshot;
+      if lPackages.Count = 0 then
+        exit;
+
+      Log($"Sending {lPackages.Count} older package(s)");
+      for each p in lPackages do begin
+        if not assigned(fChatConnection) then
+          break;
+
+        fChatConnection.SendPackage(p) begin
+          Log($"Saving new Chunk ID {aChunkID} for package {p.ID}");
+          PackageStore.PackagesByChunk[aChunkID] := p; {$HINT might add dupe chunk ids, but no biggie}
+        end;
+
+      end;
+    end;
+
+
     property Receive: block(aPacket: not nullable Package);
 
     var fChatConnection: IPChatConnection;
-    var fPackages := new List<Package>;
-    //var fPackagesByID := new Dictionary<Guid,Package>;
 
   end;
 

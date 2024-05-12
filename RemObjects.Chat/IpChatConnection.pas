@@ -44,6 +44,9 @@ type
 
     property Disconnected: Boolean read private write;
 
+    property OnAck: block(aChunkID: Integer);
+    property OnNak: block(aChunkID: Integer; aError: String);
+
     //property OnConnect: block(aConnection: IPChatConnection);
     property OnDisconnect: block(aConnection: IPChatConnection);
 
@@ -200,7 +203,8 @@ type
       //Log($"SendAuthentication: {result}");
     end;
 
-    method SendPackage(aPackage: Package; aCallback: block(aSuccess: Boolean; aError: nullable String)); locked on self;
+    [Obsolete("Migrate to SendPackage(aPackage, aSaveCallback")]
+    method SendPackage_Legacy(aPackage: Package; aCallback: block(aSuccess: Boolean; aError: nullable String)): Integer; locked on self;
     begin
       if IsClient then Log($"SendPackage {aPackage.ID} to chat {aPackage.ChatID}");
       //Log(if IsServer then $"SendPackage {aPackage.Type} to user {UserID} via {DataConnection}" else $"SendPackage {aPackage.Type}");
@@ -211,6 +215,26 @@ type
         var lSuccess := WaitForResponse(lChunkID, TimeSpan.FromSeconds(PACKAGE_WAIT_TIMEOUT), out var lError);
         aCallback(lSuccess, lError);
       end;
+
+      DataConnection.WriteUInt32LE(lChunkID);
+      DataConnection.WriteByte(TYPE_PACKAGE);
+      var lBytes := aPackage.ToByteArray;
+      DataConnection.WriteUInt32LE(length(lBytes));
+      DataConnection.Write(lBytes);
+      DataConnection.WriteUInt16LE($ffff);
+
+      result := lChunkID;
+    end;
+
+    method SendPackage(aPackage: Package; aSaveCallback: block(aChunkID: Integer)); locked on self;
+    begin
+      if IsClient then Log($"SendPackage {aPackage.ID} to chat {aPackage.ChatID}");
+      //Log(if IsServer then $"SendPackage {aPackage.Type} to user {UserID} via {DataConnection}" else $"SendPackage {aPackage.Type}");
+      DataConnection.WriteUInt16LE($0000);
+      var lChunkID := NextID;
+
+      if assigned(aSaveCallback) then async
+        aSaveCallback(lChunkID);
 
       DataConnection.WriteUInt32LE(lChunkID);
       DataConnection.WriteByte(TYPE_PACKAGE);
@@ -339,6 +363,8 @@ type
     begin
       locking fReceivedResponses do begin
         fReceivedResponses[aChunkID] := (true, nil);
+        if assigned(OnAck) then
+          OnAck(aChunkID);
         locking fWaiters do begin
           var lWaiter := fWaiters[aChunkID];
           if assigned(lWaiter) then
@@ -351,6 +377,8 @@ type
     begin
       locking fReceivedResponses do begin
         fReceivedResponses[aChunkID] := (false, aErrorMessage);
+        if assigned(OnNak) then
+          OnNak(aChunkID, aErrorMessage);
         locking fWaiters do begin
           var lWaiter := fWaiters[aChunkID];
           if assigned(lWaiter) then
