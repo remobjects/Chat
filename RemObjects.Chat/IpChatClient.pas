@@ -17,6 +17,13 @@ type
       fChatConnection := new IPChatConnection(self, lConnection);
       fChatConnection.SendAuthentication(UserID, aAuthenticationCode);
       fChatConnection.OnDisconnect := () -> DisconnectFromChat;
+      ConnectedToChat;
+    end;
+
+    method ConnectedToChat;
+    begin
+      if assigned(OnConnect) then
+        OnConnect();
     end;
 
     method DisconnectFromChat;
@@ -25,7 +32,12 @@ type
       fChatConnection:DataConnection:Close;
       fChatConnection:Dispose;
       fChatConnection := nil;
+      if assigned(OnDisconnect) then
+        OnDisconnect();
     end;
+
+    property OnConnect: block;
+    property OnDisconnect: block;
 
   assembly
 

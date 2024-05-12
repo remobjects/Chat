@@ -43,8 +43,9 @@ type
     property DataConnection: not nullable Connection;
 
     property Disconnected: Boolean read private write;
-    property OnDisconnect: block(aConnection: IPChatConnection);
 
+    //property OnConnect: block(aConnection: IPChatConnection);
+    property OnDisconnect: block(aConnection: IPChatConnection);
 
     method Work;
     begin
@@ -65,6 +66,10 @@ type
         Disconnected := true;
         if assigned(OnDisconnect) then
           OnDisconnect(self);
+      except
+        on E: Exception do begin
+          Log($"Exception in ChatConnection.Work: {E}");
+        end;
       end;
     end;
 
@@ -179,7 +184,7 @@ type
     // Send
     //
 
-    method SendAuthentication(aUserID: Guid; aAuthenticationCode: Guid; aTimeout: TimeSpan := TimeSpan.FromSeconds(10)): Boolean;
+    method SendAuthentication(aUserID: Guid; aAuthenticationCode: Guid; aTimeout: TimeSpan := TimeSpan.FromSeconds(10)): Boolean; locked on self;
     begin
       //Log($"SendAuthentication");
       DataConnection.WriteUInt16LE($0000);
@@ -195,7 +200,7 @@ type
       //Log($"SendAuthentication: {result}");
     end;
 
-    method SendPackage(aPackage: Package; aCallback: block(aSuccess: Boolean; aError: nullable String));
+    method SendPackage(aPackage: Package; aCallback: block(aSuccess: Boolean; aError: nullable String)); locked on self;
     begin
       if IsClient then Log($"SendPackage {aPackage.ID} to chat {aPackage.ChatID}");
       //Log(if IsServer then $"SendPackage {aPackage.Type} to user {UserID} via {DataConnection}" else $"SendPackage {aPackage.Type}");
@@ -215,7 +220,7 @@ type
       DataConnection.WriteUInt16LE($ffff);
     end;
 
-    method SendAck(aChunkID: UInt32);
+    method SendAck(aChunkID: UInt32); locked on self;
     begin
       Log($"SendAck");
       DataConnection.WriteUInt16LE($1111);
@@ -223,7 +228,7 @@ type
       DataConnection.WriteUInt16LE($2222);
     end;
 
-    method SendNak(aChunkID: UInt32; aError: String);
+    method SendNak(aChunkID: UInt32; aError: String); locked on self;
     begin
       Log($"SendNak");
       DataConnection.WriteUInt16LE($6666);
@@ -303,12 +308,13 @@ type
         end;
       end;
 
-      lEvent.WaitFor(aTimeout);
+      if not lEvent.WaitFor(aTimeout) then
+        aErrorMessage := $"(timeout after {aTimeout})";
 
       locking fReceivedResponses do begin
         result := fReceivedResponses[aChunkID]:[0];
         if not result then
-          aErrorMessage := fReceivedResponses[aChunkID]:[1];
+          aErrorMessage := coalesce(fReceivedResponses[aChunkID]:[1], aErrorMessage);
         fReceivedResponses[aChunkID] := nil;
       end;
 
