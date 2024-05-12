@@ -4,10 +4,16 @@ uses
   RemObjects.Infrastructure.Encryption;
 
 type
+  ChatType = public enum(&Private, &Group);
+
   ChatInfo = public abstract class
   public
     property ID: not nullable Guid;
     property UserIDs: not nullable List<Guid>;
+
+    property &Type: ChatType read; abstract;
+    property DeliveryNotifications: Boolean read &Type = ChatType.Private; virtual;
+
 
     constructor(aID: not nullable Guid);
     begin
@@ -36,7 +42,7 @@ type
     constructor withJson(aJson: JsonDocument); unit;
     begin
       if not assigned(aJson["id"]) then
-        raise new Exception("ChatIngo json is missing field 'id'.");
+        raise new Exception("ChatInfo json is missing field 'id'.");
       ID := Guid.TryParse(aJson["id"]) as not nullable;
       UserIDs := new List<Guid>;
       for each g in JsonArray(aJson["userIDs"]) do
@@ -61,12 +67,14 @@ type
 
   PrivateChatInfo = public class(ChatInfo)
   public
+    property &Type: ChatType read ChatType.Private; override;
   end;
 
   GroupChatInfo = public class(ChatInfo)
   public
     property Name: String;
     property KeyPair: KeyPair;
+    property &Type: ChatType read ChatType.Group; override;
 
     constructor(aID: not nullable Guid; aName: not nullable String);
     begin

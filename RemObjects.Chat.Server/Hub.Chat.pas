@@ -13,10 +13,12 @@ type
       Hub := aHub;
       ChatID := aChatInfo.ID;
       UserIDs := aChatInfo.UserIDs;
+      DeliveryNotifications := aChatInfo.DeliveryNotifications
     end;
 
     property Hub: weak not nullable Hub;
     property ChatID: not nullable Guid;
+    property DeliveryNotifications: Boolean;
 
     property UserIDs: ImmutableList<Guid>;
 
@@ -65,7 +67,8 @@ type
               MessageStatus.Displayed,
               MessageStatus.Read: begin
                   Log($"Server: New status received for {aPackage.MessageID}: {aPackage.Type}");
-                  NotifyStatus(aPackage);
+                  if DeliveryNotifications then
+                    NotifyStatus(aPackage);
                 end;
               else raise new Exception($"Unexpected Message Status {lStatus}")
             end;

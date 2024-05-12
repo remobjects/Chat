@@ -5,8 +5,6 @@ uses
   RemObjects.Chat;
 
 type
-  ChatType = public enum(&Private, &Group);
-
   Chat = public class
   public
 
@@ -26,22 +24,15 @@ type
       UserID := aClient.UserID;
       ChatID := aChatInfo.ID;
       UserIDs := aChatInfo.UserIDs;
-
-      case aChatInfo type of
-        PrivateChatInfo: begin
-            &Type := ChatType.Private;
-          end;
-        GroupChatInfo: begin
-            &Type := ChatType.Group;
-          end;
-        else raise new Exception($"Unexpected chat type {&Type}.")
-      end;
+      &Type := aChatInfo.Type;
+      DeliveryNotifications := aChatInfo.DeliveryNotifications;
     end;
 
     property Client: weak not nullable ChatClient;
     property ChatID: not nullable Guid;
     property UserID: not nullable Guid;
     property &Type: ChatType;
+    property DeliveryNotifications: Boolean;
 
     property UserIDs: ImmutableList<Guid>;
     //property Persons: List<UserInfo>;
@@ -81,6 +72,7 @@ type
 
     method SetMessageStatus(aMessageID: not nullable Guid; aStatus: MessageStatus);
     begin
+      Log($"assigned(Chat.MessageStatusChanged) {assigned(MessageStatusChanged)}");
       if assigned(NewMessageReceived) then
         MessageStatusChanged(aMessageID, aStatus);
     end;
