@@ -13,7 +13,8 @@ type
     method SavePacket(aPackage: Package); override;
     begin
       Log($"Queued {aPackage}");
-      fOutgoingPackages.Add(aPackage);
+      locking fOutgoingPackages do
+        fOutgoingPackages.Add(aPackage);
     end;
 
     method SendPackets; override; locked on self;
@@ -22,7 +23,7 @@ type
 
         try
           var lPackages := locking fOutgoingPackages do fOutgoingPackages.UniqueMutableCopy;
-          Log($"Sending {lPackages.Count} packages");
+          Log($"> Sending {lPackages.Count} packages");
           //Log($"{fOutgoingPackages.Count} packages to send");
           for each p in lPackages do begin
             Connection.SendPackage(p) begin
@@ -32,10 +33,11 @@ type
                 Log($"Package {p.ID} successfullty delivered to client");
               end
               else begin
-                Log($"Package {p.ID} failed to deliver to client: {aError}");
+                Log($"Package {p.ID} failed to deliver to client: '{aError}'");
               end;
             end;
           end;
+          Log($"< Done sending {lPackages.Count} packages");
 
         except
           on E: System.ObjectDisposedException do begin
@@ -86,15 +88,17 @@ type
       ReceivePackages;
     end;
 
-    method AcknowledgeReceiptOfOutgoingPackets(aIDs: array of Guid); locked on self;
+    method AcknowledgeReceiptOfOutgoingPackets(aIDs: array of Guid); //locked on self;
     begin
       var lCount := 0;
-      for i := 0 to fOutgoingPackages.Count-1 do begin
-        if aIDs.Contains(fOutgoingPackages[i].ID) then begin
-          inc(lCount);
-          fOutgoingPackages.RemoveAt(i);
-          if lCount = length(aIDs) then
-            exit;
+      locking fOutgoingPackages do begin
+        for i := 0 to fOutgoingPackages.Count-1 do begin
+          if aIDs.Contains(fOutgoingPackages[i].ID) then begin
+            inc(lCount);
+            fOutgoingPackages.RemoveAt(i);
+            if lCount = length(aIDs) then
+              exit;
+          end;
         end;
       end;
     end;
@@ -102,7 +106,7 @@ type
     [ToString]
     method ToString: String; override;
     begin
-      result := $"<{GetType.Name} for {UserID}, {fOutgoingPackages.Count} pending messages, {HasActiveConnection}";
+      result := $"<{GetType.Name} for {UserID}, {fOutgoingPackages.Count} pending packages, {HasActiveConnection}";
     end;
 
   private
