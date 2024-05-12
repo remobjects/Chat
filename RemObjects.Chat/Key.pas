@@ -151,7 +151,7 @@ type
       var lResult := bridge<Foundation.NSData>(Security.SecKeyCopyExternalRepresentation(fPrivateKey, @lError));
       if not assigned(lResult) then
         raise new Exception($"Error getting private key bytes {Foundation.CFBridgingRelease(lError)}");
-      result := lResult;
+      result := lResult as not nullable;
     end;
 
     method GetPublicKeyAsNSData: not nullable Foundation.NSData;
@@ -161,7 +161,7 @@ type
       var lResult := bridge<Foundation.NSData>(Security.SecKeyCopyExternalRepresentation(fPublicKey, @lError));
       if not assigned(var lResult) then
         raise new Exception($"Error getting public key bytes {Foundation.CFBridgingRelease(lError)}");
-      result := lResult;
+      result := lResult as not nullable;
     end;
     {$ENDIF}
 
