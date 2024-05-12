@@ -41,7 +41,7 @@ type
 
     property OwnKeyPair: KeyPair;
 
-    method FindChat(aChatID: not nullable Guid): Chat;
+    method FindChat(aChatID: not nullable Guid): Chat; locked on self;
     begin
       result := fChatsByID[aChatID];
       if not assigned(result) then begin
@@ -50,6 +50,20 @@ type
         if not assigned(lChatInfo) then
           raise new Exception($"Chat '{aChatID}' not found.");
         result := new Chat(self, lChatInfo);
+        fChatsByID[aChatID] := result;
+
+      end;
+    end;
+
+    method FindUser(aUserID: not nullable Guid; aForce: Boolean = false): UserInfo; locked on self;
+    begin
+      result := if not aForce then fUsersByID[aUserID];
+      if not assigned(result) then begin
+
+        var lUserInfo := ChatControllerProxy.FindUser(aUserID);
+        if not assigned(lUserInfo) then
+          raise new Exception($"User '{aUserID}' not found.");
+        fUsersByID[aUserID] := result;
 
       end;
     end;
@@ -69,14 +83,17 @@ type
 
     method Disconnect;
     begin
-      fIPClient.DisconnectFromChat;
+      fIPClient:DisconnectFromChat;
     end;
 
     var fIPClient: IPChatClient; private;
 
     property NewMessageReceived: block(aChat: Chat; aMessage: MessageInfo);
     property MessageStatusChanged: block(aChat: Chat; aMessageID: Guid; aStatus: MessageStatus);
-    property OnStatus: block(aString: String);
+    property OnError: block(aString: String);
+
+    property OnConnect: block;
+    property OnDisconnect: block;
 
     //
     // incoming packages
@@ -103,35 +120,40 @@ type
               except
                 on E: Exception do begin
                   Log($"E {E}");
-                  if assigned(OnStatus) then
-                    OnStatus(E.ToString);
+                  if assigned(OnError) then
+                    OnError(E.ToString);
                   SendStatusResponse(aPackage, MessageStatus.FailedToDecrypt, DateTime.UtcNow);
                 end;
               end;
             end;
           PackageType.Status: begin
-            var lStatus := (aPackage.Payload as StatusPayload).Status;
-            case lStatus of
+              var lStatus := (aPackage.Payload as StatusPayload).Status;
+              Log($"PackageType.Status {lStatus}");
+
+              case lStatus of
                 MessageStatus.FailedToDecrypt: begin
-                    Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}.");
                     ResendMessage(aPackage.MessageID);
                   end;
                 MessageStatus.Decrypted: begin
-                    Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}");
                     DiscardMessage(aPackage.MessageID);
                   end;
-                MessageStatus.Delivered,
-                MessageStatus.Received,
-                MessageStatus.Displayed,
-                MessageStatus.Read: begin
+                MessageStatus.Received: begin
                     var lChat := FindChat(aPackage.ChatID);
-                    lChat.SetMessageStatus(aPackage.MessageID, lStatus);
-                    if assigned(MessageStatusChanged) then
-                      MessageStatusChanged(lChat, aPackage.MessageID, lStatus);
-                    Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}");
+                    if not lChat.DeliveryNotifications then {$HINT use a separate flag for that, later.}
+                      fMessages[aPackage.MessageID] := nil;
                   end;
-                else raise new Exception($"Unexpected Message Status {lStatus}")
+                //MessageStatus.Delivered,
+                //MessageStatus.Displayed,
+                //MessageStatus.Read,
               end;
+
+              Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}");
+              var lChat := FindChat(aPackage.ChatID);
+              lChat.SetMessageStatus(aPackage.MessageID, lStatus);
+              Log($"assigned(Client.MessageStatusChanged) {assigned(MessageStatusChanged)}");
+              if assigned(MessageStatusChanged) then
+                MessageStatusChanged(lChat, aPackage.MessageID, lStatus);
+
             end;
           else raise new Exception($"Unexpected Package Type {aPackage.Type}");
         end;
@@ -166,6 +188,7 @@ type
     property Chats: ImmutableList<Chat> read fChats;
     var fChats := new List<Chat>; private;
     var fChatsByID := new Dictionary<Guid,Chat>; private;
+    var fUsersByID := new Dictionary<Guid,UserInfo>; private;
 
     //property Persons: ImmutableList<UserInfo>;// read fPersons;
     //var fPersons := new List<UserInfo>; private;
@@ -367,12 +390,12 @@ type
     method FindSender(aSenderID: Guid): nullable UserInfo;
     begin
       if assigned(aSenderID) then
-        result := ChatControllerProxy.FindUser(aSenderID);
+        result := FindUser(aSenderID);
     end;
 
     method RefreshPublicKey(aPerson: UserInfo): Boolean;
     begin
-      var lNewUserInfo := ChatControllerProxy.FindUser(aPerson.ID);
+      var lNewUserInfo := FindUser(aPerson.ID, true);
       result := aPerson.PublicKeyData ≠ lNewUserInfo.PublicKeyData;
       if result then begin
         Log($"got a new key");
