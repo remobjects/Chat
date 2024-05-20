@@ -178,6 +178,9 @@ type
 
     property SendCount: Integer;// read Guid.TryParse(Payload["senderId"]) write begin Payload["senderId"] := value:ToString; end;
 
+    property Sent: DateTime;
+    property Received: DateTime;
+
     property Chat: weak ChatInfo;
     property Sender: weak UserInfo;
   end;

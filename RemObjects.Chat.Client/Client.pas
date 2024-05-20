@@ -60,8 +60,8 @@ type
       result := if not aForce then fUsersByID[aUserID];
       if not assigned(result) then begin
 
-        var lUserInfo := ChatControllerProxy.FindUser(aUserID);
-        if not assigned(lUserInfo) then
+        result := ChatControllerProxy.FindUser(aUserID);
+        if not assigned(result) then
           raise new Exception($"User '{aUserID}' not found.");
         fUsersByID[aUserID] := result;
 
@@ -219,6 +219,7 @@ type
                                   SenderID := UserID,
                                   ChatID := lChat.ChatID,
                                   MessageID := aMessage.ID,
+                                  Sent := coalesce(aMessage.Sent, DateTime.UtcNow),
                                   Payload := lEncryptedMessage);
       SendPackage(lPackage);
       fMessages[aMessage.ID] := aMessage;
@@ -302,6 +303,8 @@ type
       result.ChatID := aPackage.ChatID;
       result.SenderID := aPackage.SenderID;
       result.Chat := ChatControllerProxy.FindChat(aChat.ChatID);
+      result.Sent := aPackage.Sent;
+      result.Received := DateTime.UtcNow;
 
       result.Sender := FindSender(aPackage.SenderID);
     end;
