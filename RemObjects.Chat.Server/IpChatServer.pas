@@ -29,15 +29,26 @@ type
 
     method AuthenticateConnection(aConnection: not nullable IPChatConnection; aUserID: not nullable Guid; aAuthenticationCode: not nullable Guid): Boolean;
     begin
+      //result := (false, nil); {$HINT test of this is needed}
       if ChatManager.ActiveChatManager.ChatAuthentications[aAuthenticationCode] = aUserID then begin
         fConnections[aUserID] := aConnection;
-        if ClientQueueManager.ActiveClientQueueManager.FindClientQueue(aUserID) is var lQueue: IIPClientQueue then begin
-          aConnection.OnDisconnect := () -> begin lQueue.Connection := nil; end;
-          lQueue.Connection := aConnection;
-        end;
         result := true;
+          //Log($"AuthenticateConnection callback");
+          //if ClientQueueManager.ActiveClientQueueManager.FindClientQueue(aUserID) is var lQueue: IIPClientQueue then begin
+            //aConnection.OnDisconnect := () -> begin lQueue.Connection := nil; end;
+            //lQueue.Connection := aConnection;
+          //end;
+        //end);
       end;
-      //
+    end;
+
+    method PostAuthenticateConnection(aConnection: not nullable IPChatConnection);
+    begin
+      Log($"PostAuthenticateConnection");
+      if ClientQueueManager.ActiveClientQueueManager.FindClientQueue(aConnection.UserID) is var lQueue: IIPClientQueue then begin
+        aConnection.OnDisconnect := () -> begin lQueue.Connection := nil; end;
+        lQueue.Connection := aConnection;
+      end;
     end;
 
     method ReceivePackage(aConnection: not nullable IPChatConnection; aPackage: not nullable Package);

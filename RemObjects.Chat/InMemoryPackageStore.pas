@@ -6,7 +6,7 @@ type
 
     method SavePackage(aPackage: not nullable Package); override;
     begin
-      Log($"Removing new message {aPackage.ID}");
+      Log($"Adding new message {aPackage.ID}");
       locking fPackages do begin
         fPackages.Add(aPackage);
         //fPackagesByID[aPackage.ID] := aPackage;

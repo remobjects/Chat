@@ -13,19 +13,28 @@ type
 
     method ConnectToChat(aAuthenticationCode: Guid);
     begin
+      Log($"> ConnectToChat");
       var lConnection := Connect;
       fChatConnection := new IPChatConnection(self, lConnection);
-      fChatConnection.SendAuthentication(UserID, aAuthenticationCode);
-      fChatConnection.OnDisconnect := () -> DisconnectFromChat;
-      fChatConnection.OnAck := (aChunkID) -> begin
-        Log($"+ Successfully sent package with Chunk ID {aChunkID}");
-        PackageStore.RemovePackage(aChunkID);
+      //if fChatConnection.SendAuthentication(UserID, aAuthenticationCode) then begin
+      try
+        fChatConnection.SendAuthentication(UserID, aAuthenticationCode);
+        fChatConnection.OnDisconnect := () -> DisconnectFromChat;
+        fChatConnection.OnAck := (aChunkID) -> begin
+          Log($"+ Successfully sent package with Chunk ID {aChunkID}");
+          PackageStore.RemovePackage(aChunkID);
+        end;
+        fChatConnection:OnNak := (aChunkID, aError) -> begin
+          Log($"- Failed to sent package with Chunk ID {aChunkID}");
+          PackageStore.PackagesByChunk[aChunkID] := nil; // remove chunk but keep the package
+        end;
+        Log($"+ ConnectedToChat");
+        ConnectedToChat;
+      except
+        Log($"- DisconnectFromChat");
+        DisconnectFromChat;
+        raise;
       end;
-      fChatConnection:OnNak := (aChunkID, aError) -> begin
-        Log($"- Failed to sent package with Chunk ID {aChunkID}");
-        PackageStore.PackagesByChunk[aChunkID] := nil; // remove chunk but keep the package
-      end;
-      ConnectedToChat;
     end;
 
     method ConnectedToChat;
@@ -57,6 +66,7 @@ type
 
     method ReceivePackage(aConnection: not nullable IPChatConnection; aPackage: not nullable Package);
     begin
+      Log($"ReceivePackage");
       Receive(aPackage);
     end;
 
@@ -96,7 +106,6 @@ type
 
       end;
     end;
-
 
     property Receive: block(aPacket: not nullable Package);
 

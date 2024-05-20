@@ -9,6 +9,7 @@ type
   public
 
     method AuthenticateConnection(aConnection: not nullable IPChatConnection; aUserID: not nullable Guid; aAuthenticationCode: not nullable Guid): Boolean; abstract;
+    method PostAuthenticateConnection(aConnection: not nullable IPChatConnection); abstract;
     method ReceivePackage(aConnection: not nullable IPChatConnection; aPackage: not nullable Package); abstract;
 
   end;
