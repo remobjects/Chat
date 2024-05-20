@@ -6,15 +6,16 @@ uses
   RemObjects.Chat.Connection;
 
 type
-  InMemoryClientQueue = public class(ConnectedQueue, IClientQueue, IIPClientQueue, IInjectableClientQueue)
+  InMemoryClientQueue = public class(ConnectedQueue, IClientQueue, IIPClientQueue /*, IInjectableClientQueue*/)
   public
 
 
     method SavePacket(aPackage: Package); override;
     begin
       Log($"Queued {aPackage}");
-      locking fOutgoingPackages do
-        fOutgoingPackages.Add(aPackage);
+      PackageStore.SavePackage(aPackage);
+      //locking fOutgoingPackages do
+        //fOutgoingPackages.Add(aPackage);
     end;
 
     method SendPackets; override; locked on self;
@@ -22,19 +23,21 @@ type
       if assigned(Connection) and not Connection:Disconnected then begin
 
         try
-          var lPackages := locking fOutgoingPackages do fOutgoingPackages.UniqueMutableCopy;
+          var lPackages := locking PackageStore do PackageStore.Snapshot;
           Log($"> Sending {lPackages.Count} packages");
           //Log($"{fOutgoingPackages.Count} packages to send");
           for each p in lPackages do begin
-            Connection.SendPackage_Legacy(p) begin
-              if aSuccess then begin
-                locking fOutgoingPackages do
-                  fOutgoingPackages.Remove(p);
-                Log($"Package {p.ID} successfullty delivered to client");
-              end
-              else begin
-                Log($"Package {p.ID} failed to deliver to client: '{aError}'");
-              end;
+            Connection.SendPackage(p) begin
+              Log($"Saving initial Chunk ID {aChunkID} for package {p.ID}");
+              PackageStore.PackagesByChunk[aChunkID] := p;
+              //if aSuccess then begin
+                //locking fOutgoingPackages do
+                  //fOutgoingPackages.Remove(p);
+                //Log($"Package {p.ID} successfullty delivered to client");
+              //end
+              //else begin
+                //Log($"Package {p.ID} failed to deliver to client: '{aError}'");
+              //end;
             end;
           end;
           Log($"< Done sending {lPackages.Count} packages");
@@ -78,8 +81,8 @@ type
     //
     //
 
-    property OutgoingPacketCount: Integer read fOutgoingPackages.Count;
-    property OutgoingPackets[aIndex: Integer]: Package read fOutgoingPackages[aIndex];
+    property OutgoingPacketCount: Integer read PackageStore.Count;
+    //property OutgoingPackets[aIndex: Integer]: Package read fOutgoingPackages[aIndex];
 
     method InjectIncomingPacket(aPackage: Package);
     begin
@@ -90,29 +93,29 @@ type
 
     method AcknowledgeReceiptOfOutgoingPackets(aIDs: array of Guid); //locked on self;
     begin
-      var lCount := 0;
-      locking fOutgoingPackages do begin
-        for i := 0 to fOutgoingPackages.Count-1 do begin
-          if aIDs.Contains(fOutgoingPackages[i].ID) then begin
-            inc(lCount);
-            fOutgoingPackages.RemoveAt(i);
-            if lCount = length(aIDs) then
-              exit;
-          end;
-        end;
-      end;
+      //var lCount := 0;
+      //locking fOutgoingPackages do begin
+        //for i := 0 to fOutgoingPackages.Count-1 do begin
+          //if aIDs.Contains(fOutgoingPackages[i].ID) then begin
+            //inc(lCount);
+            //fOutgoingPackages.RemoveAt(i);
+            //if lCount = length(aIDs) then
+              //exit;
+          //end;
+        //end;
+      //end;
     end;
 
     [ToString]
     method ToString: String; override;
     begin
-      result := $"<{GetType.Name} for {UserID}, {fOutgoingPackages.Count} pending packages, {HasActiveConnection}";
+      result := $"<{GetType.Name} for {UserID}, {PackageStore.Count} pending packages, {HasActiveConnection}";
     end;
 
   private
 
     fIncomingPackages := new List<Package>;
-    fOutgoingPackages := new List<Package>;
+    //fOutgoingPackages := new List<Package>;
 
   end;
 

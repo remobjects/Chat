@@ -12,6 +12,11 @@ type
     [ErrOnNilAccess("Queue Manager has not been initialized.")]
     class property ActiveClientQueueManager: ClientQueueManager;
 
+    method InjectClientQueue(aQueue: IClientQueue);
+    begin
+      fClientQueues[aQueue.UserID] := aQueue;
+    end;
+
     method FindClientQueue(aUserID: not nullable Guid): IClientQueue;
     begin
       result := fClientQueues[aUserID];
@@ -95,15 +100,34 @@ type
     end write begin
       if fConnection ≠ value then begin
         Log(if assigned(value) then $"Queue got live connection for user {UserID}." else $"Queue lost live connection for user {UserID}.");
+
+        fConnection:OnAck := nil;
+        fConnection:OnNak := nil;
+
         fConnection := value;
-        if assigned(value) then
+
+        fConnection:OnAck := (aChunkID) -> begin
+          Log($"+ Successfully sent package with Chunk ID {aChunkID}");
+          PackageStore.RemovePackage(aChunkID);
+        end;
+        fConnection:OnNak := (aChunkID, aError) -> begin
+          Log($"- Failed to sent package with Chunk ID {aChunkID}");
+          PackageStore.PackagesByChunk[aChunkID] := nil; // remove chunk but keep the package
+        end;
+
+        if assigned(fConnection) then
           SendPackets;
       end;
     end;
 
     property HasActiveConnection: Boolean read assigned(Connection);
 
+  protected
+
+    property PackageStore: PackageStore := new InMemoryPackageStore; {$HINT abstract later}
+
   private
+
     var fConnection: nullable IPChatConnection;
 
   end;
