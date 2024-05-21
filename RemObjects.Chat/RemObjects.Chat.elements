@@ -156,6 +156,9 @@
     <Compile Include="InMemoryPackageStore.pas">
       <VirtualFolder>Package Stores</VirtualFolder>
     </Compile>
+    <Compile Include="FolderBackedPackageStore.pas">
+      <VirtualFolder>Package Stores</VirtualFolder>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>
