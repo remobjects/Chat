@@ -19,52 +19,52 @@ type
   protected
 
     method SavePacket(aPacket: P); abstract;
+    ////begin
+      ////PacketQueue.Enqueue(aPacket);
+    ////end;
+
+    method SendPackets; abstract;
     //begin
-      //PacketQueue.Enqueue(aPacket);
+      ////while PacketQueue.Count > 0 do begin
+        ////var p := PacketQueue.Peek;
+        ////DoSendPacket(p);
+        ////PacketQueue.Dequeue;
+      ////end;
     //end;
 
-    method SendPackets; virtual;
-    begin
-      //while PacketQueue.Count > 0 do begin
-        //var p := PacketQueue.Peek;
-        //DoSendPacket(p);
-        //PacketQueue.Dequeue;
-      //end;
-    end;
-
-    method DoSendPacket(aPacket: P); abstract;
+    //method DoSendPacket(aPacket: P); abstract;
 
   end;
 
-  LocalFolderQueue<P> = public abstract class(PersistentQueue<P>)
-  protected
+  //LocalFolderQueue<P> = public abstract class(PersistentQueue<P>)
+  //protected
 
-    constructor withFolder(aFolder: not nullable String);
-    begin
-      fFolder := aFolder;
-      Folder.Create(aFolder);
-    end;
+    //constructor withFolder(aFolder: not nullable String);
+    //begin
+      //fFolder := aFolder;
+      //Folder.Create(aFolder);
+    //end;
 
-    method SavePacket(aPacket: P); override;
-    begin
-      var lName := Path.Combine(fFolder, Guid.NewGuid+".package");
-      File.WriteBytes(lName, aPacket.ToByteArray);
-    end;
+    //method SavePacket(aPacket: P); override;
+    //begin
+      //var lName := Path.Combine(fFolder, Guid.NewGuid+".package");
+      //File.WriteBytes(lName, aPacket.ToByteArray);
+    //end;
 
-  private
+  //private
 
-    var fFolder: String;
+    //var fFolder: String;
 
-  end;
+  //end;
 
-  LocalFolderTestQueue<P> = public class(LocalFolderQueue<P>)
-  protected
+  //LocalFolderTestQueue<P> = public class(LocalFolderQueue<P>)
+  //protected
 
-    method DoSendPacket(aPacket: P); override;
-    begin
-      Log($"Pretend-sending {aPacket}");
-    end;
+    //method DoSendPacket(aPacket: P); override;
+    //begin
+      //Log($"Pretend-sending {aPacket}");
+    //end;
 
-  end;
+  //end;
 
 end.

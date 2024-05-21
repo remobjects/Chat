@@ -60,9 +60,20 @@
     <Compile Include="ChatController.pas" />
     <Compile Include="ChatManager.pas" />
     <Compile Include="Hub.Chat.pas" />
-    <Compile Include="ClientQueueManager.pas" />
+    <Compile Include="ClientQueueManager.pas">
+      <VirtualFolder>Queues</VirtualFolder>
+    </Compile>
     <Compile Include="IpChatServer.pas" />
-    <Compile Include="InMemoryClientQueue.pas" />
+    <None Include="InMemoryClientQueue.pas">
+      <VirtualFolder>Queues</VirtualFolder>
+    </None>
+    <None Include="EchoQueue.pas" />
+    <Compile Include="ConnectedQueue.pas">
+      <VirtualFolder>Queues</VirtualFolder>
+    </Compile>
+    <Folder Include="Queues">
+      <Virtual>True</Virtual>
+    </Folder>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>

@@ -82,6 +82,40 @@ type
 
   end;
 
+  //ChatQueueManager<PS> = public class(ClientQueueManager)
+  //where PS is PackageStore, PS has constructor;
+  //protected
+
+    //method CreateQueueForUser(aUserID: not nullable Guid): IClientQueue; override;
+    //begin
+      //var lPackageStore := new PS;
+      //result := new ConnectedQueue(aUserID, lPackageStore);
+    //end;
+
+  //end;
+
+  FolderBackedQueueManager = public class(ClientQueueManager)
+  public
+
+    constructor withFolder(aFolder: not nullable String);
+    begin
+      fFolder := aFolder;
+    end;
+
+  protected
+
+    method CreateQueueForUser(aUserID: not nullable Guid): IClientQueue; override;
+    begin
+      var lPackageStore := new FolderBackedPackageStore withFolder(Path.Combine(fFolder, aUserID.ToString));
+      result := new ConnectedQueue(aUserID, lPackageStore);
+    end;
+
+  private
+
+    var fFolder: not nullable String;
+
+  end;
+
   IInjectableClientQueue = public interface
   public
     method InjectIncomingPacket(aPackage: Package);
@@ -89,47 +123,6 @@ type
     property OutgoingPacketCount: Integer read;
     property OutgoingPackets[aIndex: Integer]: Package read;
     method AcknowledgeReceiptOfOutgoingPackets(aIDs: array of Guid);
-  end;
-
-  ConnectedQueue = public abstract class(PersistentQueue<Package>)
-  public
-
-    property UserID: not nullable Guid; required;
-    property Connection: nullable IPChatConnection read begin
-      result := fConnection;
-    end write begin
-      if fConnection ≠ value then begin
-        Log(if assigned(value) then $"Queue got live connection for user {UserID}." else $"Queue lost live connection for user {UserID}.");
-
-        fConnection:OnAck := nil;
-        fConnection:OnNak := nil;
-
-        fConnection := value;
-
-        fConnection:OnAck := (aChunkID) -> begin
-          Log($"+ Successfully sent package with Chunk ID {aChunkID}");
-          PackageStore.RemovePackage(aChunkID);
-        end;
-        fConnection:OnNak := (aChunkID, aError) -> begin
-          Log($"- Failed to sent package with Chunk ID {aChunkID}");
-          PackageStore.PackagesByChunk[aChunkID] := nil; // remove chunk but keep the package
-        end;
-
-        if assigned(fConnection) then
-          SendPackets;
-      end;
-    end;
-
-    property HasActiveConnection: Boolean read assigned(Connection);
-
-  protected
-
-    property PackageStore: PackageStore := new InMemoryPackageStore; {$HINT abstract later}
-
-  private
-
-    var fConnection: nullable IPChatConnection;
-
   end;
 
 

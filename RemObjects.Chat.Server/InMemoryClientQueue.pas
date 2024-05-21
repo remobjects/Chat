@@ -10,60 +10,60 @@ type
   public
 
 
-    method SavePacket(aPackage: Package); override;
-    begin
-      Log($"Queued {aPackage}");
-      PackageStore.SavePackage(aPackage);
-      //locking fOutgoingPackages do
-        //fOutgoingPackages.Add(aPackage);
-    end;
+    //method SavePacket(aPackage: Package); override;
+    //begin
+      //Log($"Queued {aPackage}");
+      //PackageStore.SavePackage(aPackage);
+      ////locking fOutgoingPackages do
+        ////fOutgoingPackages.Add(aPackage);
+    //end;
 
-    method SendPackets; override; locked on self;
-    begin
-      if assigned(Connection) and not Connection:Disconnected then begin
+    //method SendPackets; override; locked on self;
+    //begin
+      //if assigned(Connection) and not Connection:Disconnected then begin
 
-        try
-          var lPackages := locking PackageStore do PackageStore.Snapshot;
-          Log($"> Sending {lPackages.Count} packages");
-          //Log($"{fOutgoingPackages.Count} packages to send");
-          for each p in lPackages do begin
-            Connection.SendPackage(p) begin
-              Log($"Saving initial Chunk ID {aChunkID} for package {p.ID}");
-              PackageStore.PackagesByChunk[aChunkID] := p;
-              //if aSuccess then begin
-                //locking fOutgoingPackages do
-                  //fOutgoingPackages.Remove(p);
-                //Log($"Package {p.ID} successfullty delivered to client");
-              //end
-              //else begin
-                //Log($"Package {p.ID} failed to deliver to client: '{aError}'");
-              //end;
-            end;
-          end;
-          Log($"< Done sending {lPackages.Count} packages");
+        //try
+          //var lPackages := locking PackageStore do PackageStore.Snapshot;
+          //Log($"> Sending {lPackages.Count} packages");
+          ////Log($"{fOutgoingPackages.Count} packages to send");
+          //for each p in lPackages do begin
+            //Connection.SendPackage(p) begin
+              //Log($"Saving initial Chunk ID {aChunkID} for package {p.ID}");
+              //PackageStore.PackagesByChunk[aChunkID] := p;
+              ////if aSuccess then begin
+                ////locking fOutgoingPackages do
+                  ////fOutgoingPackages.Remove(p);
+                ////Log($"Package {p.ID} successfullty delivered to client");
+              ////end
+              ////else begin
+                ////Log($"Package {p.ID} failed to deliver to client: '{aError}'");
+              ////end;
+            //end;
+          //end;
+          //Log($"< Done sending {lPackages.Count} packages");
 
-        except
-          on E: System.ObjectDisposedException do begin
-            Log($"Live client connection for user '{UserID}' was closed/lost.");
-            Connection := nil;
-          end;
-          on E: Exception do begin
-            Log($"Exception sending packets: {E}");
-          end;
+        //except
+          //on E: System.ObjectDisposedException do begin
+            //Log($"Live client connection for user '{UserID}' was closed/lost.");
+            //Connection := nil;
+          //end;
+          //on E: Exception do begin
+            //Log($"Exception sending packets: {E}");
+          //end;
 
-        end;
+        //end;
 
-      end
-      else begin
-        Log($"Currently there is no live client connection for user '{UserID}'.");
-      end;
-    end;
+      //end
+      //else begin
+        //Log($"Currently there is no live client connection for user '{UserID}'.");
+      //end;
+    //end;
 
-    method DoSendPacket(aPackage: Package); override;
-    begin
-      //if assigned(Connection) then
-        //Connection.SendPackage(aPackage);
-    end;
+    //method DoSendPacket(aPackage: Package); override;
+    //begin
+      ////if assigned(Connection) then
+        ////Connection.SendPackage(aPackage);
+    //end;
 
     method ReceivePackages;
     begin
