@@ -141,12 +141,24 @@ type
       Log($"ReadAuthentication #{aChunkID}");
       if not assigned(Server) then
         raise new ChatException($"Unexpected Package type {TYPE_AUTH} for client.");
-      if aSize ≠ Guid.Size*2 then
+      if (aSize ≠ Guid.Size*2) and (aSize ≠ Guid.Size*2+sizeOf(UInt16)*2) then
         raise new ChatException($"Unexpected Package size for this request {Convert.ToHexString(aSize)} ≠ {Guid.Size*2}.");
+
       if not DataConnection.ReadGuid(out var lUserID) then
         raise new ChatException($"Unexpected Package size for this request.");
       if not DataConnection.ReadGuid(out var lAuthentcationToken) then
         raise new ChatException($"Unexpected Package size for this request.");
+
+      if (aSize = Guid.Size*2) then begin
+        ClientVersion := 1;
+        ClientMinVersion := 1;
+      end
+      else if aSize = Guid.Size*2+sizeOf(UInt16)*2 then begin
+        if not DataConnection.ReadUInt16LE(out ClientVersion) then
+          raise new ChatException($"Unexpected Package size for this request.");
+        if not DataConnection.ReadUInt16LE(out var ClientinVersion) then
+          raise new ChatException($"Unexpected Package size for this request.");
+      end;
 
       if not Server.AuthenticateConnection(self, lUserID, lAuthentcationToken) then
         raise new Exception($"Authentication failed");
@@ -165,6 +177,7 @@ type
           exit;
         inc(lOffset, lRead);
       end;
+      Log($"RECEIVED: {Convert.ToHexString(lBytes, " ", 16)}");
       var lPackage := new Package withByteArray(lBytes);
       ReceivePackage(lPackage);
     end;
@@ -237,6 +250,7 @@ type
       DataConnection.WriteUInt32LE(lChunkID);
       DataConnection.WriteByte(TYPE_PACKAGE);
       var lBytes := aPackage.ToByteArray;
+      Log($"SENDING: {Convert.ToHexString(lBytes, " ", 16)}");
       DataConnection.WriteUInt32LE(length(lBytes));
       DataConnection.Write(lBytes);
       DataConnection.WriteUInt16LE($ffff);
@@ -288,6 +302,10 @@ type
 
     property Client: nullable IPChatClient;
     property Server: nullable IIPChatServer;
+
+    property ClientVersion: UInt16 read private write;
+    property ClientMinVersion: UInt16 read private write;
+
 
   private
 

@@ -52,10 +52,11 @@ type
       case aPackage.Type of
         PackageType.Message: begin
             var lMessage := CreateMessage(aPackage);
-            Log($"Server: New message received: {lMessage}");
+            Log($"Server: New message received: {lMessage}, {aPackage.Sent}");
             DeliverMessage(lMessage) ToAllBut(aPackage.SenderID);
             ChatManager.ActiveChatManager.MessageReceived(self, aPackage.SenderID, lMessage);
-            SendStatusResponse(lMessage, nil, MessageStatus.Received, DateTime.UtcNow);
+            Log($"aPackage.RecipientID {aPackage.RecipientID}, aMessage.SenderID {lMessage.SenderID}");
+            SendStatusResponse(aPackage.SenderID, aPackage, MessageStatus.Received, DateTime.UtcNow);
           end;
         PackageType.Status: begin
             var lStatus := (aPackage.Payload as StatusPayload).Status;
@@ -66,9 +67,9 @@ type
               MessageStatus.FailedToDecrypt,
               MessageStatus.Displayed,
               MessageStatus.Read: begin
-                  Log($"Server: New status received for {aPackage.MessageID}: {aPackage.Type}");
+                  Log($"Server: New status received for {aPackage.MessageID}: {lStatus}");
                   if DeliveryNotifications then
-                    NotifyStatus(aPackage);
+                    SendStatusResponse(aPackage.RecipientID, aPackage, lStatus, aPackage.Sent);
                 end;
               else raise new Exception($"Unexpected Message Status {lStatus}")
             end;
@@ -79,36 +80,17 @@ type
 
     //
 
-    method NotifyStatus(aPackage: Package);
-    begin
-      var lMessage := Hub.FindMessage(aPackage);
-      case aPackage.Type of
-        PackageType.Status: begin
-            var lStatus := (aPackage.Payload as StatusPayload).Status;
-            case lStatus of
-              MessageStatus.Received: ;{no-op}
-              MessageStatus.Delivered: lMessage.Delivered := aPackage.Sent;
-              MessageStatus.Decrypted: lMessage.Decryted := aPackage.Sent;
-              MessageStatus.FailedToDecrypt: ;
-              MessageStatus.Displayed: lMessage.Displayed := aPackage.Sent;
-              MessageStatus.Read: lMessage.Read := aPackage.Sent;
-              else raise new Exception($"Unexpected message status {lStatus}");
-            end;
-            SendStatusResponse(lMessage, aPackage.SenderID, lStatus, aPackage.Sent);
-          end;
-      end;
-    end;
-
-    method SendStatusResponse(aMessage: HubMessage; aSenderID: nullable Guid; aStatus: MessageStatus; aDate: DateTime);
+    method SendStatusResponse(aRecipientID: Guid; aPackage: Package; aStatus: MessageStatus; aDate: DateTime);
     begin
       var lPackage := new Package(&Type := PackageType.Status,
                                   ID := Guid.NewGuid,
-                                  SenderID := aSenderID,
+                                  SenderID := aPackage.SenderID,
                                   ChatID := ChatID,
-                                  MessageID := aMessage.ID,
+                                  MessageID := aPackage.MessageID,
+                                  Sent := DateTime.UtcNow,
                                   Payload := new StatusPayload(Status := aStatus,
                                                                Date := DateTime.UtcNow));
-      Hub.SendPackage(aMessage.SenderID, lPackage);
+      Hub.SendPackage(aRecipientID, lPackage);
     end;
 
   end;

@@ -27,7 +27,7 @@ type
     begin
       var lBinary := new Binary;
       var lWriter := new BinaryWriter withBinary(lBinary);
-      lWriter.WriteUInt8($02);
+      lWriter.WriteUInt8($02); // Version
       lWriter.WriteUInt8(&Type as Byte);
       lWriter.WriteGuid(ID);
       lWriter.WriteGuid(coalesce(SenderID, Guid.Empty));

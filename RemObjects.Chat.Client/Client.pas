@@ -76,6 +76,14 @@ type
     begin
       if not assigned(fIPClient) then begin
         fIPClient := new IPChatClient(HostName := aHostName, Port := aPort, UserID := UserID);
+        fIPClient.OnConnect := () -> begin
+          if assigned(OnConnect) then
+            OnConnect();
+        end;
+        fIPClient.OnDisconnect := () -> begin
+          if assigned(OnDisconnect) then
+            OnDisconnect();
+        end;
         if not assigned(PackageStore) then
           raise new /*NullReference*/Exception("PackageStore is not assigned");
         fIPClient.PackageStore := PackageStore;
@@ -87,6 +95,8 @@ type
     method Disconnect;
     begin
       fIPClient:DisconnectFromChat;
+      fIPClient:OnConnect := nil;
+      fIPClient:OnDisconnect := nil;
     end;
 
     var fIPClient: IPChatClient; private;
@@ -261,10 +271,10 @@ type
       var lData := Encoding.UTF8.GetBytes(lStringData);
 
       result := new MessagePayload;
-      if aChat.PublicKey:HasPublicKey then
-        Log($"EncryptMessage PublicKey: {Convert.ToHexString(length(aChat.PublicKey:GetPublicKey), 8)} {aChat.PublicKey:GetPublicKey.ToHexString}")
-      else
-        Log($"EncryptMessage PublicKey: none");
+      //if aChat.PublicKey:HasPublicKey then
+        //Log($"EncryptMessage PublicKey: {Convert.ToHexString(length(aChat.PublicKey:GetPublicKey), 8)} {aChat.PublicKey:GetPublicKey.ToHexString}")
+      //else
+        //Log($"EncryptMessage PublicKey: none");
 
       result.EncryptedMessage := coalesce(aChat.PublicKey:EncryptWithPublicKey(lData), lData);
       if aChat.Type = ChatType.Group then // private chats are always enctypted

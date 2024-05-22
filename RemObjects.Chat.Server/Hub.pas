@@ -82,7 +82,7 @@ type
     method OnReceivePackage(aPackage: Package); override;
     begin
       try
-        Log($"OnReceivePackage(User.ID)");
+        Log($"OnReceivePackage({User.ID})");
         aPackage.SenderID := User.ID;
         var lChat := Hub.FindChat(aPackage.ChatID);
         if not assigned(lChat) then
@@ -90,7 +90,7 @@ type
         lChat.OnReceivePackage(aPackage);
       except
         on E: Exception do
-          Log($"Exception propcessing package: {E}");
+          Log($"Exception processing package: {E}");
       end;
     end;
 
@@ -103,10 +103,10 @@ type
 
     property OriginalPackage: not nullable Package; required;
     property Received: not nullable DateTime; required;
-    property Delivered: nullable DateTime;
-    property Decryted: nullable DateTime;
-    property Displayed: nullable DateTime;
-    property &Read: nullable DateTime;
+    //property Delivered: nullable DateTime;
+    //property Decryted: nullable DateTime;
+    //property Displayed: nullable DateTime;
+    //property &Read: nullable DateTime;
 
     property ID: not nullable Guid read OriginalPackage.MessageID;
     property SenderID: not nullable Guid read OriginalPackage.SenderID;
