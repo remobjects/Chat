@@ -13,6 +13,7 @@
     <MangleTypeNames>True</MangleTypeNames>
     <WarnOnImplicitNotNullableCast>True</WarnOnImplicitNotNullableCast>
     <OutputPath>..\Bin</OutputPath>
+    <GenerateDebugInfo>True</GenerateDebugInfo>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <Optimize>False</Optimize>

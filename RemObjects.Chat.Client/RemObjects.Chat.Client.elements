@@ -12,6 +12,7 @@
     <DefaultUses>RemObjects.Elements.RTL</DefaultUses>
     <OutputPath>..\Bin</OutputPath>
     <MangleTypeNames>True</MangleTypeNames>
+    <GenerateDebugInfo>True</GenerateDebugInfo>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <Optimize>False</Optimize>
