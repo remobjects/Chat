@@ -84,7 +84,6 @@ type
               else new JsonPayload();
             end;
             Payload.Load(aBytes, lReader.Offset);
-            Log($"Payload {Payload}");
           end;
       end;
 

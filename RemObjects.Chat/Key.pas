@@ -397,8 +397,6 @@ type
 
     method LoadFromFiles(aPublicKeyFile: String; aPrivateKeyFile: String; aFormat: KeyFormat);
     begin
-      Log($"{aPublicKeyFile}:FileExists {aPublicKeyFile:FileExists}");
-      Log($"{aPrivateKeyFile}:FileExists {aPrivateKeyFile:FileExists}");
       case aFormat of
         KeyFormat.Bytes: LoadFromBytes(if aPublicKeyFile:FileExists then File.ReadBytes(aPublicKeyFile),
                                        if aPrivateKeyFile:FileExists then File.ReadBytes(aPrivateKeyFile));

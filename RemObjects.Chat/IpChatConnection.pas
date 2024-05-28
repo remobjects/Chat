@@ -53,7 +53,7 @@ type
 
     method Work;
     begin
-      Log($"> IPChatConnection.Work starts");
+      //Log($"> IPChatConnection.Work starts");
       try
         while DataConnection.ReadUInt16LE(out var lType) do begin
           Log($"Incoming packet of type ${Convert.ToHexString(lType, 4)}.");
@@ -64,7 +64,7 @@ type
             $316, $4547: raise new ChatException($"This is not a HTTP Server.");
             else raise new ChatException($"Unexpected packet kind {Convert.ToHexString(lType)}.");
           end;
-          Log($"> IPChatConnection.Work loop");
+          //Log($"> IPChatConnection.Work loop");
         end;
         Log(if IsServer then $"Client {UserID} disconnected" else $"Server closed the connection");
       finally
@@ -76,7 +76,7 @@ type
           Log($"Exception in ChatConnection.Work: {E}");
         end;
       end;
-      Log($"< IPChatConnection.Work done");
+      //Log($"< IPChatConnection.Work done");
     end;
 
     //
@@ -93,13 +93,13 @@ type
         try
           if not DataConnection.ReadByte(out var lType) then
             raise new Exception("Connection closed while reading chunk type");
-          Log($"lType {lType}");
+          //Log($"lType {lType}");
 
           if not DataConnection.ReadUInt32LE(out var lSize) then
             raise new Exception("Connection closed while reading chunk size");
           if lSize > MaxPackageSize then
             raise new ChatException($"Package exceeds maximum size {Convert.ToHexString(lSize)} > {Convert.ToHexString(MaxPackageSize)}.");
-          Log($"lSize {lSize}");
+          //Log($"lSize {lSize}");
 
           case lType of
             TYPE_AUTH: ReadAuthentication(lChunkID, lSize);
@@ -109,7 +109,7 @@ type
 
           if not DataConnection.ReadUInt16LE(out var lEtx) then
             raise new ChatException($"Connection closed while reading end of package marker.");
-          Log($"lEtx {Convert.ToHexString(lEtx)}");
+          //Log($"lEtx {Convert.ToHexString(lEtx)}");
           if lEtx ≠ $ffff then
             raise new ChatException($"Expected end of package marker, received {Convert.ToHexString(lEtx)}.");
 
@@ -162,7 +162,7 @@ type
 
       if not Server.AuthenticateConnection(self, lUserID, lAuthentcationToken) then
         raise new Exception($"Authentication failed");
-      Log($"Authenticated as {lUserID}");
+      //Log($"Authenticated as {lUserID}");
       UserID := lUserID;
     end;
 
@@ -177,7 +177,7 @@ type
           exit;
         inc(lOffset, lRead);
       end;
-      Log($"RECEIVED: {Convert.ToHexString(lBytes, " ", 16)}");
+      //Log($"RECEIVED: {Convert.ToHexString(lBytes, " ", 16)}");
       var lPackage := new Package withByteArray(lBytes);
       ReceivePackage(lPackage);
     end;
@@ -230,10 +230,10 @@ type
       DataConnection.WriteGuid(aUserID);
       DataConnection.WriteGuid(aAuthenticationCode);
       DataConnection.WriteUInt16LE($ffff);
-      Log($"SendAuthentication: waiting");
+      //Log($"SendAuthentication: waiting");
       if not WaitForResponse(lChunkID, aTimeout, out var aError) then
         raise new Exception(aError);
-      Log($"SendAuthentication Done");
+      //Log($"SendAuthentication Done");
     end;
 
     method SendPackage(aPackage: Package; aSaveCallback: block(aChunkID: Integer)); locked on self;
@@ -250,11 +250,11 @@ type
       DataConnection.WriteUInt32LE(lChunkID);
       DataConnection.WriteByte(TYPE_PACKAGE);
       var lBytes := aPackage.ToByteArray;
-      Log($"SENDING: {Convert.ToHexString(lBytes, " ", 16)}");
+      //Log($"SENDING: {Convert.ToHexString(lBytes, " ", 16)}");
       DataConnection.WriteUInt32LE(length(lBytes));
       DataConnection.Write(lBytes);
       DataConnection.WriteUInt16LE($ffff);
-      Log($"SendPackage done");
+      //Log($"SendPackage done");
     end;
 
     method SendAck(aChunkID: UInt32); locked on self;
@@ -263,7 +263,7 @@ type
       DataConnection.WriteUInt16LE($1111);
       DataConnection.WriteUInt32LE(aChunkID);
       DataConnection.WriteUInt16LE($2222);
-      Log($"SendAck done");
+      //Log($"SendAck done");
     end;
 
     method SendNak(aChunkID: UInt32; aError: String); locked on self;
@@ -280,7 +280,7 @@ type
         DataConnection.WriteUInt32LE(0);
       end;
       DataConnection.WriteUInt16LE($2222);
-      Log($"SendNak done");
+      //Log($"SendNak done");
     end;
 
     //
@@ -325,9 +325,9 @@ type
 
     method WaitForResponse(aChunkID: Integer; aTimeout: TimeSpan): Boolean; inline;
     begin
-      Log($"WaitForResponse({aTimeout.Seconds}s)");
+      //Log($"WaitForResponse({aTimeout.Seconds}s)");
       result := WaitForResponse(aChunkID, aTimeout, out var nil);
-      Log($"got response {result}");
+      //Log($"got response {result}");
     end;
 
     method WaitForResponse(aChunkID: Integer; aTimeout: TimeSpan; out aErrorMessage: nullable String): Boolean;
@@ -339,7 +339,7 @@ type
       locking fWaiters do
         fWaiters[aChunkID] := lWait;
 
-      Log($"WaitForResponse({aChunkID})");
+      //Log($"WaitForResponse({aChunkID})");
 
       locking fReceivedResponses do begin
         if assigned(fReceivedResponses[aChunkID]) then begin
@@ -355,17 +355,14 @@ type
         end;
       end;
 
-      Log($"WaitForResponse2");
+      //Log($"WaitForResponse2");
 
       if not lEvent.WaitFor(aTimeout) then begin
-        Log($"timeout");
-        aErrorMessage := $"(timeout after {aTimeout})";
+        Log($"WaitForResponse timeout ({aTimeout}s)");
+        aErrorMessage := $"(timeout after {aTimeout}s)";
       end;
 
       locking fReceivedResponses do begin
-        Log($"fReceivedResponses[{aChunkID}] {assigned(fReceivedResponses[aChunkID])}");
-        Log($"fReceivedResponses[{aChunkID}]:[0] {fReceivedResponses[aChunkID]:[0]}");
-        Log($"fReceivedResponses[{aChunkID}]:[1] {fReceivedResponses[aChunkID]:[1]}");
         result := fReceivedResponses[aChunkID]:[0];
         if not result then
           aErrorMessage := coalesce(fReceivedResponses[aChunkID]:[1], aErrorMessage);

@@ -72,7 +72,6 @@ type
 
     method SetMessageStatus(aMessageID: not nullable Guid; aStatus: MessageStatus);
     begin
-      Log($"assigned(Chat.MessageStatusChanged) {assigned(MessageStatusChanged)}");
       if assigned(NewMessageReceived) then
         MessageStatusChanged(aMessageID, aStatus);
     end;
