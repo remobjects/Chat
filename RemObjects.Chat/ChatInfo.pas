@@ -119,7 +119,7 @@ type
     property LastSeen: nullable DateTime;
 
     property PublicKeyData: array of Byte;
-    property PublicKey: PublicKey := if assigned(PublicKeyData) then new KeyPair withPublicKey(PublicKeyData); lazy; readonly;
+    property PublicKey: PublicKey := if length(PublicKeyData) > 0 then new KeyPair withPublicKey(PublicKeyData); lazy; readonly;
 
     constructor(aID: not nullable Guid; aName: not nullable String);
     begin
@@ -145,7 +145,7 @@ type
       Handle := aJson["handle"]:StringValue;
       Status := aJson["status"]:StringValue;
       LastSeen := DateTime.TryParseISO8601(aJson["lastSeen"]:StringValue);
-      if assigned(aJson["publicKey"]) then
+      if length(aJson["publicKey"]:StringValue) > 0 then
         PublicKeyData := Convert.Base64StringToByteArray(aJson["publicKey"]:StringValue);
     end;
 
