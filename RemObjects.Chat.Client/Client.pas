@@ -10,32 +10,21 @@ type
   ChatClient = public class(BaseClient)
   public
 
-    constructor; empty;
-
-    //constructor withFolder(aFolder: String);
-    //begin
-      //Load(aFolder);
-    //end;
-
-    //method Load(aFolder: not nullable String);
-    //begin
-      //OwnKeyPair := new KeyPair withFiles(Path.Combine(aFolder, "public_key.key"),
-                                          //Path.Combine(aFolder, "private_key.key"),
-                                          //KeyFormat.Bytes);
-      //for each f in Folder.GetFiles(aFolder).Where(f -> f.LastPathComponent.EndsWith("_public.key")) do
-        //fPersons.Add(new UserInfo(UserID := Guid.TryParse(f.LastPathComponent.Substring(0, length(f.LastPathComponent)-11)),
-                                //PublicKey := new KeyPair withFiles(f, nil, KeyFormat.Bytes)));
-    //end;
-
-    //method Save(aFolder: not nullable String);
-    //begin
-      //Folder.Create(aFolder);
-      //OwnKeyPair.SaveToFiles(Path.Combine(aFolder, "public_key.key"),
-                             //Path.Combine(aFolder, "private_key.key"),
-                             //KeyFormat.Bytes);
-      //for each p in Persons do
-        //p.PublicKey.SaveToFiles(Path.Combine(aFolder, p.UserID+"_public.key"), nil, KeyFormat.Bytes);
-    //end;
+    constructor(aUser: UserInfo; aPackageStore: not nullable PackageStore);
+    begin
+      inherited(aUser);
+      fIPClient := new IPChatClient(UserID := UserID);
+      fIPClient.OnConnect := () -> begin
+        if assigned(OnConnect) then
+          OnConnect();
+      end;
+      fIPClient.OnDisconnect := () -> begin
+        if assigned(OnDisconnect) then
+          OnDisconnect();
+      end;
+      fIPClient.PackageStore := aPackageStore;
+      Queue := fIPClient;
+    end;
 
     //
 
@@ -74,33 +63,16 @@ type
 
     method Connect(aHostName: not nullable String; aPort: Integer; aAuthenticationCode: not nullable Guid);
     begin
-      if not assigned(fIPClient) then begin
-        fIPClient := new IPChatClient(HostName := aHostName, Port := aPort, UserID := UserID);
-        fIPClient.OnConnect := () -> begin
-          if assigned(OnConnect) then
-            OnConnect();
-        end;
-        fIPClient.OnDisconnect := () -> begin
-          if assigned(OnDisconnect) then
-            OnDisconnect();
-        end;
-        if not assigned(PackageStore) then
-          raise new /*NullReference*/Exception("PackageStore is not assigned");
-        fIPClient.PackageStore := PackageStore;
-        Queue := fIPClient;
-      end;
-      fIPClient.ConnectToChat(aAuthenticationCode);
+      fIPClient.ConnectToChat(aHostName, aPort, aAuthenticationCode);
     end;
 
     method Disconnect;
     begin
       fIPClient:DisconnectFromChat;
-      fIPClient:OnConnect := nil;
-      fIPClient:OnDisconnect := nil;
     end;
 
     var fIPClient: IPChatClient; private;
-    property PackageStore: PackageStore;
+    property PackageStore: PackageStore read fIPClient.PackageStore;
 
     property NewMessageReceived: block(aChat: Chat; aMessage: MessageInfo);
     property MessageStatusChanged: block(aChat: Chat; aMessageID: Guid; aStatus: MessageStatus);
@@ -164,7 +136,6 @@ type
               Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}");
               var lChat := FindChat(aPackage.ChatID);
               lChat.SetMessageStatus(aPackage.MessageID, lStatus);
-              Log($"assigned(Client.MessageStatusChanged) {assigned(MessageStatusChanged)}");
               if assigned(MessageStatusChanged) then
                 MessageStatusChanged(lChat, aPackage.MessageID, lStatus);
 
@@ -218,7 +189,7 @@ type
     method SendMessage(aMessage: MessageInfo);
     begin
       aMessage.SenderID := UserID;
-      aMessage.ID := Guid.NewGuid;
+      aMessage.ID := coalesce(aMessage.ID, Guid.NewGuid);
       aMessage.SendCount := aMessage.SendCount+1;
 
       var lChat := FindChat(aMessage.ChatID);
@@ -327,16 +298,19 @@ type
       //Log($"Signature        {Convert.ToHexString(length(lPayload.Signature), 8)} {lPayload.Signature.ToHexString}");
       //Log($"EncryptedMessage {Convert.ToHexString(length(lPayload.EncryptedMessage), 8)} {lPayload.EncryptedMessage.ToHexString}");
 
+      if aPayload.IsEncrypted and not aChat.SharedKeyPair:HasPrivateKey then
+        raise new Exception("Payload is encrypted, but chat has no private key.");
+
       case aChat.Type of
         ChatType.Private: begin
             //Log($"OwnPrivateKey    {Convert.ToHexString(length(OwnKeyPair:GetPrivateKey), 8)} {OwnKeyPair:GetPrivateKey.ToHexString(" ", 16)}");
 
-          if OwnKeyPair:HasPublicKey then
-            Log($"DecodePayload PrivateKey: {Convert.ToHexString(length(OwnKeyPair:GetPublicKey), 8)} {OwnKeyPair:GetPublicKey.ToHexString}")
-          else
-            Log($"DecodePayload PrivateKey: none");
+          //if OwnKeyPair:HasPublicKey then
+            //Log($"DecodePayload PrivateKey: {Convert.ToHexString(length(OwnKeyPair:GetPublicKey), 8)} {OwnKeyPair:GetPublicKey.ToHexString}")
+          //else
+            //Log($"DecodePayload PrivateKey: none");
 
-            var lDecryptedMessage := OwnKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage);
+            var lDecryptedMessage := if aPayload.IsEncrypted then OwnKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage) else aPayload.EncryptedMessage;
             var lString := Encoding.UTF8.GetString(lDecryptedMessage);
 
             result.Payload := JsonDocument.FromString(lString);
@@ -354,9 +328,6 @@ type
 
           end;
         ChatType.Group: begin
-
-            if aPayload.IsEncrypted and not aChat.SharedKeyPair:HasPrivateKey then
-              raise new Exception("Payload is encrypted, but chat has no private key.");
 
             var lDecryptedMessage := if aPayload.IsEncrypted then aChat.SharedKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage) else aPayload.EncryptedMessage;
             var lString := Encoding.UTF8.GetString(lDecryptedMessage);

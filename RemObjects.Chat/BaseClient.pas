@@ -7,7 +7,7 @@ type
   BaseClient = public abstract class
   public
 
-    property User: not nullable UserInfo; required;
+    property User: not nullable UserInfo;
     property UserID: not nullable Guid read User.ID;
 
     property Queue: ITwoWayQueueEndpoint<Package> read fQueue write SetQueue;
@@ -16,6 +16,11 @@ type
     method SendPackage(aPackage: Package);
     begin
       Queue.Send(aPackage);
+    end;
+
+    constructor(aUser: not nullable UserInfo);
+    begin
+      User := aUser;
     end;
 
   protected

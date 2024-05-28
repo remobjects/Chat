@@ -11,10 +11,12 @@ type
 
     property UserID: Guid; required;
 
-    method ConnectToChat(aAuthenticationCode: Guid);
+    method ConnectToChat(aHostName: not nullable String; aPort: Integer; aAuthenticationCode: Guid);
     begin
       Log($"> ConnectToChat");
-      var lConnection := Connect;
+      //HostName := aHostName;
+      //Port := aPort;
+      var lConnection := ConnectNew(aHostName, aPort);
       fChatConnection := new IPChatConnection(self, lConnection);
       //if fChatConnection.SendAuthentication(UserID, aAuthenticationCode) then begin
       try
@@ -39,6 +41,7 @@ type
 
     method ConnectedToChat;
     begin
+      Log($"ConnectedToChat");
       if assigned(OnConnect) then
         OnConnect();
       SendStoredPackages;
@@ -87,10 +90,12 @@ type
 
     method SendStoredPackages; locked on self;
     begin
+      Log($"SendStoredPackages");
       if not assigned(fChatConnection) then
         exit;
 
       var lPackages := PackageStore.Snapshot;
+      Log($"lPackages.Count {lPackages.Count}");
       if lPackages.Count = 0 then
         exit;
 

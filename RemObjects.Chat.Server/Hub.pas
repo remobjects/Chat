@@ -41,16 +41,17 @@ type
 
         var lQueue := ClientQueueManager.ActiveClientQueueManager.FindClientQueue(aUserID);
 
-        result := new HubClient(Hub := self, User := lUserInfo, Queue := lQueue);
+        result := new HubClient(lUserInfo, self, lQueue);
       end;
     end;
 
-    method FindMessage(aPackage: not nullable Package): not nullable HubMessage;
-    begin
-      result := Messages[aPackage.MessageID];
-      if not assigned(result) then
-        raise new Exception($"Message '{aPackage.MessageID}' not found.");
-    end;
+    //method FindMessage(aPackage: not nullable Package): not nullable HubMessage;
+    //begin
+      //var lResult := Messages[aPackage.MessageID];
+      //if not assigned(lResult) then
+        //raise new Exception($"Message '{aPackage.MessageID}' not found.");
+      //result := lResult;
+    //end;
 
     method SaveMessage(aMessage: not nullable HubMessage);
     begin
@@ -70,7 +71,14 @@ type
   HubClient = public class(BaseClient)
   public
 
-    property Hub: not nullable Hub; required;
+    constructor(aUser: not nullable UserInfo; aHub: not nullable Hub; aQueue: not nullable ITwoWayQueueEndpoint<Package>);
+    begin
+      inherited constructor(aUser);
+      Hub := aHub;
+      Queue := aQueue;
+    end;
+
+    property Hub: not nullable Hub;
 
     method Send(aPackage: not nullable Package);
     begin

@@ -9,7 +9,7 @@ type
   ConnectedQueue = public class(PersistentQueue<Package>, IClientQueue, IIPClientQueue)
   public
 
-    constructor(aUserID: Guid; aPackageStore: PackageStore);
+    constructor(aUserID: not nullable Guid; aPackageStore: not nullable PackageStore);
     begin
       UserID := aUserID;
       fPackageStore := aPackageStore;
