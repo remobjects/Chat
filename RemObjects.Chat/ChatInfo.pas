@@ -157,7 +157,8 @@ type
       result["handle"] := Handle;
       result["status"] := Status;
       result["lastSeen"] := LastSeen:ToISO8601String;
-      result["publicKey"] := Convert.ToBase64String(PublicKeyData);
+      if length(PublicKeyData) > 0 then
+        result["publicKey"] := Convert.ToBase64String(PublicKeyData);
     end;
 
     method ToJsonString(aFormat: JsonFormat := JsonFormat.HumanReadable): not nullable String;
