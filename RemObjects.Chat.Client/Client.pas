@@ -248,8 +248,7 @@ type
         //Log($"EncryptMessage PublicKey: none");
 
       result.EncryptedMessage := coalesce(aChat.PublicKey:EncryptWithPublicKey(lData), lData);
-      if aChat.Type = ChatType.Group then // private chats are always enctypted
-        result.IsEncrypted := aChat.PublicKey:HasPublicKey;
+      result.IsEncrypted := aChat.PublicKey:HasPublicKey;
 
       if not OwnKeyPair:HasPrivateKey then
         raise new Exception("User does not have a private key set up.");
@@ -309,6 +308,10 @@ type
             //Log($"DecodePayload PrivateKey: {Convert.ToHexString(length(OwnKeyPair:GetPublicKey), 8)} {OwnKeyPair:GetPublicKey.ToHexString}")
           //else
             //Log($"DecodePayload PrivateKey: none");
+
+            //Log($"aPayload.IsEncrypted {aPayload.IsEncrypted}");
+            //Log($"aPayload.EncryptedMessage {Convert.ToHexString(aPayload.EncryptedMessage)}");
+            //Log($"aPayload.EncryptedMessage {Convert.ToAsciiString(aPayload.EncryptedMessage)}");
 
             var lDecryptedMessage := if aPayload.IsEncrypted then OwnKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage) else aPayload.EncryptedMessage;
             var lString := Encoding.UTF8.GetString(lDecryptedMessage);

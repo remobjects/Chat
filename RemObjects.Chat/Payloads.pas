@@ -80,7 +80,7 @@ type
       Json["signature"] := Convert.ToBase64String(value);
     end;
 
-    property IsEncrypted: nullable Boolean read Json["encrypted"]:BooleanValue write Json["encrypted"];
+    property IsEncrypted: nullable Boolean read valueOrDefault(Json["encrypted"]:BooleanValue) write Json["encrypted"];
 
   end;
 
