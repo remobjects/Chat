@@ -39,14 +39,14 @@ type
 
     constructor;
     begin
-      Log($"Created {GetType.Name}");
-      async loop try
-        Thread.Sleep(10000);
-        Log($"{ClientQueueManager.ActiveClientQueueManager}");
-      except
-        on E: Exception do
-          Log($"E {E}");
-      end;
+      //Log($"Created {GetType.Name}");
+      //async loop try
+        //Thread.Sleep(10000);
+        //Log($"{ClientQueueManager.ActiveClientQueueManager}");
+      //except
+        //on E: Exception do
+          //Log($"E {E}");
+      //end;
     end;
 
 

@@ -44,6 +44,15 @@ type
       end;
     end;
 
+    method FindChat(aChatInfo: not nullable ChatInfo): Chat; locked on self;
+    begin
+      result := fChatsByID[aChatInfo.ID];
+      if not assigned(result) then begin
+        result := new Chat(self, aChatInfo);
+        fChatsByID[aChatInfo.ID] := result;
+      end;
+    end;
+
     method FindUser(aUserID: not nullable Guid; aForce: Boolean = false): UserInfo; locked on self;
     begin
       result := if not aForce then fUsersByID[aUserID];
@@ -186,13 +195,16 @@ type
 
     //
 
-    method SendMessage(aMessage: MessageInfo);
+    method SendMessage(aMessage: not nullable MessageInfo; aChatInfo: nullable ChatInfo := nil; aUserInfo: nullable UserInfo := nil);
     begin
       aMessage.SenderID := UserID;
       aMessage.ID := coalesce(aMessage.ID, Guid.NewGuid);
       aMessage.SendCount := aMessage.SendCount+1;
 
-      var lChat := FindChat(aMessage.ChatID);
+      if assigned(aUserInfo) then
+        fUsersByID[aUserInfo.ID] := aUserInfo;
+
+      var lChat := if assigned(aChatInfo) then FindChat(aChatInfo) else FindChat(aMessage.ChatID);
       var lEncryptedMessage := EncryptMessage(aMessage, lChat);
 
       var lPackage := new Package(&Type := PackageType.Message,
@@ -247,8 +259,14 @@ type
       //else
         //Log($"EncryptMessage PublicKey: none");
 
-      result.EncryptedMessage := coalesce(aChat.PublicKey:EncryptWithPublicKey(lData), lData);
-      result.IsEncrypted := aChat.PublicKey:HasPublicKey;
+      var lKeyPair := case aChat.Type of
+        ChatType.Private: FindUser(aChat.UserIDs.First(u -> u ≠ UserID)).PublicKey;
+        ChatType.Group: aChat.SharedKeyPair;
+        else raise new Exception($"Unexpected chat type {aChat.Type}.")
+      end;
+
+      result.EncryptedMessage := coalesce(lKeyPair:EncryptWithPublicKey(lData), lData);
+      result.IsEncrypted := lKeyPair:HasPublicKey;
 
       if not OwnKeyPair:HasPrivateKey then
         raise new Exception("User does not have a private key set up.");

@@ -9,7 +9,7 @@ type
   ChatInfo = public abstract class
   public
     property ID: not nullable Guid;
-    property UserIDs: not nullable List<Guid>;
+    property UserIDs: nullable List<Guid>;
 
     property &Type: ChatType read; abstract;
     property DeliveryNotifications: Boolean read &Type = ChatType.Private; virtual;
@@ -31,7 +31,7 @@ type
     // This is not using Serialization because it will be used client-side too, and Serialixation isn't ported to Cocoa yet :(.
     //
 
-    class method FromJson(aJson: JsonDocument): ChatInfo;
+    class method FromJson(aJson: JsonDocument): InstanceType;
     begin
       if length(aJson["name"]:StringValue) > 0 then
         result := new GroupChatInfo withJson(aJson)
@@ -39,23 +39,32 @@ type
         result := new PrivateChatInfo withJson(aJson)
     end;
 
+    class method FromString(aJsonString: String): InstanceType;
+    begin
+      result := FromJson(JsonDocument.FromString(aJsonString));
+    end;
+
     constructor withJson(aJson: JsonDocument); unit;
     begin
       if not assigned(aJson["id"]) then
         raise new Exception("ChatInfo json is missing field 'id'.");
       ID := Guid.TryParse(aJson["id"]) as not nullable;
-      UserIDs := new List<Guid>;
-      for each g in JsonArray(aJson["userIDs"]) do
-        UserIDs.Add(Guid.TryParse(g));
+      if assigned(aJson["userIDs"]) then begin
+        UserIDs := new List<Guid> withCapacity(aJson["userIDs"]:Count);
+        for each g in JsonArray(aJson["userIDs"]) do
+          UserIDs.Add(Guid.TryParse(g));
+      end;
     end;
 
     method ToJson: JsonObject; virtual;
     begin
       result := new JsonObject;
       result["id"] := ID.ToString;
-      result["userIDs"] := new JsonArray;
-      for each u in UserIDs do
-        JsonArray(result["userIDs"]).Add(u.ToString)
+      if assigned(UserIDs) then begin
+        result["userIDs"] := new JsonArray;
+        for each u in UserIDs do
+          JsonArray(result["userIDs"]).Add(u.ToString)
+      end;
     end;
 
     method ToJsonString(aFormat: JsonFormat := JsonFormat.HumanReadable): not nullable String;
@@ -63,11 +72,18 @@ type
       result := ToJson.ToJsonString(JsonFormat.Minimal);
     end;
 
+    [ToString]
+    method ToString: String; override;
+    begin
+      result := ToJsonString(JsonFormat.HumanReadable);
+    end;
+
   end;
 
   PrivateChatInfo = public class(ChatInfo)
   public
     property &Type: ChatType read ChatType.Private; override;
+
   end;
 
   GroupChatInfo = public class(ChatInfo)
@@ -88,7 +104,7 @@ type
       Name := aName;
     end;
 
-    constructor(aID: not nullable Guid; aUserIDs: not nullable List<Guid>; aName: not nullable String; aKeyPair: KeyPair);
+    constructor(aID: not nullable Guid; aUserIDs: nullable List<Guid>; aName: not nullable String; aKeyPair: KeyPair);
     begin
       constructor(aID, aUserIDs, aName);
       KeyPair := aKeyPair;
@@ -131,9 +147,14 @@ type
     // This is not using Serialization because it will be used client-side too, and Serialixation isn't ported to Cocoa yet :(.
     //
 
-    class method FromJson(aJson: JsonDocument): UserInfo;
+    class method FromJson(aJson: JsonDocument): InstanceType;
     begin
       result := new UserInfo withJson(aJson);
+    end;
+
+    class method FromString(aJsonString: String): InstanceType;
+    begin
+      result := FromJson(JsonDocument.FromString(aJsonString));
     end;
 
     constructor withJson(aJson: JsonDocument); unit;
@@ -165,6 +186,13 @@ type
     begin
       result := ToJson.ToJsonString(JsonFormat.Minimal);
     end;
+
+    [ToString]
+    method ToString: String; override;
+    begin
+      result := ToJsonString(JsonFormat.HumanReadable);
+    end;
+
   end;
 
 

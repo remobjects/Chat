@@ -37,21 +37,21 @@ type
     property UserIDs: ImmutableList<Guid>;
     //property Persons: List<UserInfo>;
 
-    property PublicKey: KeyPair read begin
-      result := case &Type of
-        ChatType.Private: OtherUserPublicKey;
-        ChatType.Group: SharedKeyPair;
-        else raise new Exception($"Unexpected chat type {&Type}.")
-      end;
-    end;
+    //property PublicKey: KeyPair read begin
+      //result := case &Type of
+        //ChatType.Private: OtherUserPublicKey;
+        //ChatType.Group: SharedKeyPair;
+        //else raise new Exception($"Unexpected chat type {&Type}.")
+      //end;
+    //end;
 
     //PrivateChat
-    property OtherUserPublicKey: PublicKey read OtherUser.PublicKey;
-    property OtherUser: UserInfo read begin
-      if &Type = ChatType.Private then begin
-        result := Client.ChatControllerProxy.FindUser(UserIDs.First(u -> u ≠ UserID));
-      end;
-    end;
+    //property OtherUserPublicKey: PublicKey read OtherUser.PublicKey;
+    //property OtherUser: UserInfo read begin
+      //if &Type = ChatType.Private then begin
+        //result := Client.ChatControllerProxy.FindUser(UserIDs.First(u -> u ≠ UserID));
+      //end;
+    //end;
 
     // GroupChat
     property SharedKeyPair: KeyPair;
