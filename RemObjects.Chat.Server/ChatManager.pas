@@ -88,7 +88,7 @@ type
 
     method MessageReceived(aChat: HubChat; aSenderID: Guid; aMessage: HubMessage); override;
     begin
-      Log($"Message Received: {aMessage}");
+      Logging.Delivery($"Message Received: {aMessage}");
     end;
 
     method __AddUser(aUser: UserInfo);

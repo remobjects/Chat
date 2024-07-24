@@ -61,6 +61,12 @@ type
 
     property Messages: ImmutableList<MessageInfo> read fMessages;
 
+    [ToString]
+    method ToString: String; override;
+    begin
+      result := $"<Chat {ChatID}, Type {&Type}, has {UserIDs.Count} users>";
+    end;
+
   assembly
 
     method AddMessage(aMessage: MessageInfo);

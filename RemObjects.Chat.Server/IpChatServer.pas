@@ -29,8 +29,11 @@ type
 
     method AuthenticateConnection(aConnection: not nullable IPChatConnection; aUserID: not nullable Guid; aAuthenticationCode: not nullable Guid): Boolean;
     begin
-      //result := (false, nil); {$HINT test of this is needed}
-      if ChatManager.ActiveChatManager.ChatAuthentications[aAuthenticationCode] = aUserID then begin
+      Logging.Connection($"AuthenticateConnection");
+
+      var lID := ChatManager.ActiveChatManager.ChatAuthentications[aAuthenticationCode];
+
+      if lID = aUserID then begin
         fConnections[aUserID] := aConnection;
         result := true;
           //Log($"AuthenticateConnection callback");
@@ -39,12 +42,19 @@ type
             //lQueue.Connection := aConnection;
           //end;
         //end);
+      end
+      else begin
+        Log($"Chat: AuthenticateConnection failed:");
+        Log($"aUserID {aUserID}");
+        Log($"lID     {lID}");
+        Log($"lID = aUserID {lID = aUserID}");
       end;
+
     end;
 
     method PostAuthenticateConnection(aConnection: not nullable IPChatConnection);
     begin
-      Log($"PostAuthenticateConnection");
+      Logging.Connection($"PostAuthenticateConnection");
       if ClientQueueManager.ActiveClientQueueManager.FindClientQueue(aConnection.UserID) is var lQueue: IIPClientQueue then begin
         aConnection.OnDisconnect := () -> begin lQueue.Connection := nil; end;
         lQueue.Connection := aConnection;
@@ -53,7 +63,7 @@ type
 
     method ReceivePackage(aConnection: not nullable IPChatConnection; aPackage: not nullable Package);
     begin
-      Log($"ReceivePackage {aPackage}");
+      Logging.Connection($"ReceivePackage {aPackage}");
       var lQueue := ClientQueueManager.ActiveClientQueueManager.FindClientQueue(aConnection.UserID);
       if not assigned(lQueue) then
         raise new Exception($"No client queue found for user '{aConnection.UserID}'.");

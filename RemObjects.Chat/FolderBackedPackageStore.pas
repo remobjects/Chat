@@ -8,12 +8,12 @@ type
     begin
       fFolder := aFolder;
       Load;
-      Log($"Reloaded {Count} package(s)");
+      Logging.PackageStore($"Reloaded {Count} package(s)");
     end;
 
     method SavePackage(aPackage: not nullable Package); override;
     begin
-      Log($"Adding new message {aPackage.ID}");
+      Logging.PackageStore($"Adding new message {aPackage.ID}");
       locking fPackages do begin
         fPackages.Add(aPackage);
         File.WriteBytes(Path.Combine(fFolder, aPackage.ID.ToString+".package"), aPackage.ToByteArray);
@@ -25,7 +25,7 @@ type
       if not assigned(aPackage) then
         exit;
 
-      Log($"Removing sent message {aPackage.ID}");
+      Logging.PackageStore($"Removing sent message {aPackage.ID}");
       locking fPackages do begin
         fPackages.Remove(aPackage);
         File.Delete(Path.Combine(fFolder, aPackage.ID.ToString+".package"));
@@ -51,7 +51,7 @@ type
         fPackages.Add(lPackage);
       except
         on E: Exception do begin
-          Log($"Exceprtiom loading package file {f}: {E.Message}");
+          Log($"Exception loading package file {f}: {E.Message}");
           File.Delete(f);
         end;
       end;

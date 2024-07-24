@@ -14,8 +14,7 @@ type
     property &Type: ChatType read; abstract;
     property DeliveryNotifications: Boolean read &Type = ChatType.Private; virtual;
 
-
-    constructor(aID: not nullable Guid);
+    constructor(aID: not nullable Guid); unit;
     begin
       ID := aID;
       UserIDs := new List<Guid>;
@@ -33,6 +32,7 @@ type
 
     class method FromJson(aJson: JsonDocument): InstanceType;
     begin
+      Log($"FromJson {aJson}, {length(aJson["name"]:StringValue) > 0}, '{aJson["name"]}'");
       if length(aJson["name"]:StringValue) > 0 then
         result := new GroupChatInfo withJson(aJson)
       else
@@ -46,6 +46,7 @@ type
 
     constructor withJson(aJson: JsonDocument); unit;
     begin
+      Log($"base withJson");
       if not assigned(aJson["id"]) then
         raise new Exception("ChatInfo json is missing field 'id'.");
       ID := Guid.TryParse(aJson["id"]) as not nullable;
@@ -113,6 +114,7 @@ type
     constructor withJson(aJson: JsonDocument); unit;
     begin
       inherited constructor withJson(aJson);
+      Log($"GroupChatInfo withJson");
       Name := aJson["name"]:StringValue;
       KeyPair := if assigned(aJson["keys"]) then new KeyPair withJson(aJson["keys"]);
     end;

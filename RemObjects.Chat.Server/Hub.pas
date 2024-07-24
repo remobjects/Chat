@@ -90,7 +90,7 @@ type
     method OnReceivePackage(aPackage: Package); override;
     begin
       try
-        Log($"OnReceivePackage({User.ID})");
+        Logging.Connection($"OnReceivePackage({User.ID})");
         aPackage.SenderID := User.ID;
         var lChat := Hub.FindChat(aPackage.ChatID);
         if not assigned(lChat) then
@@ -98,7 +98,7 @@ type
         lChat.OnReceivePackage(aPackage);
       except
         on E: Exception do
-          Log($"Exception processing package: {E}");
+          Logging.Error($"Exception processing package: {E}");
       end;
     end;
 

@@ -62,7 +62,7 @@ type
 
     //method DoSendPacket(aPacket: P); override;
     //begin
-      //Log($"Pretend-sending {aPacket}");
+      //Logging.Delivery($"Pretend-sending {aPacket}");
     //end;
 
   //end;

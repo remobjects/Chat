@@ -27,7 +27,7 @@ type
     method ClearChunkIDs; locked on fPackagesByChunk;
     begin
       {$HINT is this safe? or could we have race with a new chunk being added? review later}
-      Log($"Clearing all old Chunk IDs ({locking fPackagesByChunk do fPackagesByChunk.Count})");
+      Logging.PackageStore($"Clearing all old Chunk IDs ({locking fPackagesByChunk do fPackagesByChunk.Count})");
       locking fPackagesByChunk do
         fPackagesByChunk.RemoveAll;
     end;

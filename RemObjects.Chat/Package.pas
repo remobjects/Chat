@@ -103,6 +103,6 @@ type
   end;
 
   PackageType = public enum(Message, Status);
-  MessageStatus = public enum(Unknown, Received, Delivered, Decrypted, FailedToSend, FailedToDecrypt, Displayed, &Read);
+  MessageStatus = public enum(Unknown, Received, Delivered, Decrypted, FailedToSend, FailedToDecrypt, FailedPermanently, Displayed, &Read);
 
 end.

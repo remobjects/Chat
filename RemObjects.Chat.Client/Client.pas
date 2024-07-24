@@ -19,6 +19,7 @@ type
           OnConnect();
       end;
       fIPClient.OnDisconnect := () -> begin
+        Log($"## ChatClient OnDisconnect callback");
         if assigned(OnDisconnect) then
           OnDisconnect();
       end;
@@ -98,23 +99,23 @@ type
     begin
       try
 
-        Log($"Client {UserID} received: {aPackage.MessageID}, {aPackage.Type}, {aPackage.Payload}");
+        Logging.Connection($"Client {UserID} received: {aPackage.MessageID}, {aPackage.Type}, {aPackage.Payload}");
         case aPackage.Type of
           PackageType.Message: begin
               //var lMessage := CreateMessage(aPackage);
-              Log($"Client: New message received");//: {lMessage}");
+              Logging.Connection($"Client: New message received");//: {lMessage}");
               SendStatusResponse(aPackage, MessageStatus.Delivered, DateTime.UtcNow);
               var lChat := FindChat(aPackage.ChatID);
               try
                 var lMessage := DecodeMessage(aPackage, lChat);
-                Log($"Client: decrypted message: {lMessage.Payload}");
+                Logging.Connection($"Client: decrypted message: {lMessage.Payload}");
                 SendStatusResponse(aPackage, MessageStatus.Decrypted, DateTime.UtcNow);
                 lChat.AddMessage(lMessage);
                 if assigned(NewMessageReceived) then
                   NewMessageReceived(lChat, lMessage);
               except
                 on E: Exception do begin
-                  Log($"E {E}");
+                  Logging.Error($"E {E}");
                   if assigned(OnError) then
                     OnError(E.ToString);
                   SendStatusResponse(aPackage, MessageStatus.FailedToDecrypt, DateTime.UtcNow);
@@ -123,7 +124,7 @@ type
             end;
           PackageType.Status: begin
               var lStatus := (aPackage.Payload as StatusPayload).Status;
-              Log($"PackageType.Status {lStatus}");
+              Logging.Connection($"PackageType.Status {lStatus}");
 
               case lStatus of
                 MessageStatus.FailedToDecrypt: begin
@@ -142,20 +143,24 @@ type
                 //MessageStatus.Read,
               end;
 
-              Log($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}");
+              Logging.Connection($"Client: New status received for {aPackage.MessageID}: {aPackage.Type}");
               var lChat := FindChat(aPackage.ChatID);
-              lChat.SetMessageStatus(aPackage.MessageID, lStatus);
-              if assigned(MessageStatusChanged) then
-                MessageStatusChanged(lChat, aPackage.MessageID, lStatus);
-
+              SetMessageStatus(aPackage.MessageID, lChat, lStatus);
             end;
           else raise new Exception($"Unexpected Package Type {aPackage.Type}");
         end;
 
       except
         on E: Exception do
-          Log($"{E.Message}");
+          Logging.Error($"{E.Message}");
       end;
+    end;
+
+    method SetMessageStatus(aMessageID: not nullable Guid; aChat: not nullable Chat; aStatus: MessageStatus);
+    begin
+      aChat.SetMessageStatus(aMessageID, aStatus);
+      if assigned(MessageStatusChanged) then
+        MessageStatusChanged(aChat, aMessageID, aStatus);
     end;
 
     method SendStatusResponse(aPackage: Package; aStatus: MessageStatus; aDate: DateTime);
@@ -220,20 +225,23 @@ type
 
     method ResendMessage(aMessageID: Guid);
     begin
-      Log($"ResendMessage {aMessageID}");
+      Logging.Connection($"ResendMessage {aMessageID}");
       var lMessage := fMessages[aMessageID];
       if assigned(lMessage) then begin
         var lChat := FindChat(lMessage.ChatID);
-        if assigned(lChat.OtherUser) then begin
-          RefreshPublicKey(lChat.OtherUser);
-          Log($"refreshed");
+        var lUser := FindUser(lChat.UserIDs.First(u -> u ≠ UserID));
+
+        if RefreshPublicKey(lUser) then begin
+          Logging.Keys($"Key was refreshed");
+
+          if lMessage.SendCount < MaximumDeliveryAttempts then begin
+            SendMessage(lMessage);
+          end
+          else begin
+            SetMessageStatus(lMessage.ID, lChat, MessageStatus.FailedPermanently);
+          end;
+
         end;
-        //if lMessage.SendCount < MaximujmDeliveryAttempts then begin
-          //SendMessage(lMessage);
-        //end
-        //else begin
-          lChat.SetMessageStatus(lMessage.ID, MessageStatus.FailedToDecrypt);
-        //end;
       end;
     end;
 
@@ -242,7 +250,7 @@ type
       fMessages[aMessageID] := nil;
     end;
 
-    property MaximujmDeliveryAttempts: Integer := 5;
+    property MaximumDeliveryAttempts: Integer := 5;
 
   private
 
@@ -255,9 +263,9 @@ type
 
       result := new MessagePayload;
       //if aChat.PublicKey:HasPublicKey then
-        //Log($"EncryptMessage PublicKey: {Convert.ToHexString(length(aChat.PublicKey:GetPublicKey), 8)} {aChat.PublicKey:GetPublicKey.ToHexString}")
+        //Logging.Keys($"EncryptMessage PublicKey: {Convert.ToHexString(length(aChat.PublicKey:GetPublicKey), 8)} {aChat.PublicKey:GetPublicKey.ToHexString}")
       //else
-        //Log($"EncryptMessage PublicKey: none");
+        //Logging.Keys($"EncryptMessage PublicKey: none");
 
       var lKeyPair := case aChat.Type of
         ChatType.Private: FindUser(aChat.UserIDs.First(u -> u ≠ UserID)).PublicKey;
@@ -273,12 +281,12 @@ type
 
       result.Signature := OwnKeyPair.SignWithPrivateKey(lData);
 
-      //Log($"-- encode --");
-      //Log($"StringData       {Convert.ToHexString(length(lStringData), 8)} {lStringData}");
-      //Log($"lata             {Convert.ToHexString(length(lData), 8)} {lData.ToHexString}");
-      //Log($"EncryptedMessage {Convert.ToHexString(length(result.EncryptedMessage), 8)} {result.EncryptedMessage.ToHexString}");
-      //Log($"Signature        {Convert.ToHexString(length(result.Signature), 8)} {result.Signature.ToHexString}");
-      //Log($"PublicKey        {Convert.ToHexString(length(aChat.PublicKey.GetPublicKey), 8)} {aChat.PublicKey.GetPublicKey.ToHexString(" ", 16)}");
+      //Logging.Keys($"-- encode --");
+      //Logging.Keys($"StringData       {Convert.ToHexString(length(lStringData), 8)} {lStringData}");
+      //Logging.Keys($"lata             {Convert.ToHexString(length(lData), 8)} {lData.ToHexString}");
+      //Logging.Keys($"EncryptedMessage {Convert.ToHexString(length(result.EncryptedMessage), 8)} {result.EncryptedMessage.ToHexString}");
+      //Logging.Keys($"Signature        {Convert.ToHexString(length(result.Signature), 8)} {result.Signature.ToHexString}");
+      //Logging.Keys($"PublicKey        {Convert.ToHexString(length(aChat.PublicKey.GetPublicKey), 8)} {aChat.PublicKey.GetPublicKey.ToHexString(" ", 16)}");
     end;
 
     //method DecodeMessage(aPackage: Package): MessageInfo;
@@ -311,44 +319,59 @@ type
     begin
       result := new MessageInfo;
 
-      //Log($"-- decode --");
-      //Log($"Signature        {Convert.ToHexString(length(lPayload.Signature), 8)} {lPayload.Signature.ToHexString}");
-      //Log($"EncryptedMessage {Convert.ToHexString(length(lPayload.EncryptedMessage), 8)} {lPayload.EncryptedMessage.ToHexString}");
+      //Logging.Keys($"-- decode --");
+      //Logging.Keys($"Signature        {Convert.ToHexString(length(lPayload.Signature), 8)} {lPayload.Signature.ToHexString}");
+      //Logging.Keys($"EncryptedMessage {Convert.ToHexString(length(lPayload.EncryptedMessage), 8)} {lPayload.EncryptedMessage.ToHexString}");
 
-      if aPayload.IsEncrypted and not aChat.SharedKeyPair:HasPrivateKey then
-        raise new Exception("Payload is encrypted, but chat has no private key.");
+
+      Log($"aPayload.IsEncrypted {aPayload.IsEncrypted}");
+      Log($"aChat {aChat}");
+      Log($"aChat.SharedKeyPair {aChat.SharedKeyPair}");
+      if assigned(aChat.SharedKeyPair) then
+        Log($"aChat.SharedKeyPair.HasPrivateKey {aChat.SharedKeyPair.HasPrivateKey}");
+      Log($"aChat.Type {aChat.Type}");
 
       case aChat.Type of
         ChatType.Private: begin
-            //Log($"OwnPrivateKey    {Convert.ToHexString(length(OwnKeyPair:GetPrivateKey), 8)} {OwnKeyPair:GetPrivateKey.ToHexString(" ", 16)}");
+
+          Log($"Private chat");
+          if aPayload.IsEncrypted and not assigned(OwnKeyPair) or not OwnKeyPair.HasPrivateKey then
+            raise new Exception("Payload is encrypted, but user has no own private key.");
+
+          //Logging.Keys($"OwnPrivateKey    {Convert.ToHexString(length(OwnKeyPair:GetPrivateKey), 8)} {OwnKeyPair:GetPrivateKey.ToHexString(" ", 16)}");
 
           //if OwnKeyPair:HasPublicKey then
-            //Log($"DecodePayload PrivateKey: {Convert.ToHexString(length(OwnKeyPair:GetPublicKey), 8)} {OwnKeyPair:GetPublicKey.ToHexString}")
+            //Logging.Keys($"DecodePayload PrivateKey: {Convert.ToHexString(length(OwnKeyPair:GetPublicKey), 8)} {OwnKeyPair:GetPublicKey.ToHexString}")
           //else
-            //Log($"DecodePayload PrivateKey: none");
+            //Logging.Keys($"DecodePayload PrivateKey: none");
 
-            //Log($"aPayload.IsEncrypted {aPayload.IsEncrypted}");
-            //Log($"aPayload.EncryptedMessage {Convert.ToHexString(aPayload.EncryptedMessage)}");
-            //Log($"aPayload.EncryptedMessage {Convert.ToAsciiString(aPayload.EncryptedMessage)}");
+            //Logging.Keys($"aPayload.IsEncrypted {aPayload.IsEncrypted}");
+            //Logging.Keys($"aPayload.EncryptedMessage {Convert.ToHexString(aPayload.EncryptedMessage)}");
+            //Logging.Keys($"aPayload.EncryptedMessage {Convert.ToAsciiString(aPayload.EncryptedMessage)}");
 
             var lDecryptedMessage := if aPayload.IsEncrypted then OwnKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage) else aPayload.EncryptedMessage;
             var lString := Encoding.UTF8.GetString(lDecryptedMessage);
 
             result.Payload := JsonDocument.FromString(lString);
 
-            //Log($"DecodePayload PublicKey: {Convert.ToHexString(length(result.Sender:PublicKey:GetPublicKey), 8)} {result.Sender:PublicKey:GetPublicKey.ToHexString}");
+            //Logging.Keys($"DecodePayload PublicKey: {Convert.ToHexString(length(result.Sender:PublicKey:GetPublicKey), 8)} {result.Sender:PublicKey:GetPublicKey.ToHexString}");
             if result.Sender:PublicKey:HasPublicKey then begin
               result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
-              Log($"result.SignatureValid {result.SignatureValid}");
+              Logging.Keys($"result.SignatureValid {result.SignatureValid}");
               if not result.SignatureValid then begin
                 if RefreshPublicKey(result.Sender) then
                   result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
-                Log($"result.SignatureValid {result.SignatureValid}, now");
+                Logging.Keys($"result.SignatureValid {result.SignatureValid}, now");
               end;
             end;
 
           end;
         ChatType.Group: begin
+
+            Log($"Group chat");
+
+            if aPayload.IsEncrypted and (not assigned(aChat.SharedKeyPair) or not aChat.SharedKeyPair.HasPrivateKey) then
+              raise new Exception("Payload is encrypted, but group chat has no private key.");
 
             var lDecryptedMessage := if aPayload.IsEncrypted then aChat.SharedKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage) else aPayload.EncryptedMessage;
             var lString := Encoding.UTF8.GetString(lDecryptedMessage);
@@ -370,11 +393,11 @@ type
 
 
 
-      //Log($"-- decode --");
-      //Log($"lSignature        {aPayload.Signature.ToHexString}");
-      //Log($"lEncryptedMessage {aPayload.EncryptedMessage.ToHexString}");
-      //Log($"result.Payload {result.Payload}");
-      //Log($"result.SignatureValid {result.SignatureValid}");
+      //Logging.Keys($"-- decode --");
+      //Logging.Keys($"lSignature        {aPayload.Signature.ToHexString}");
+      //Logging.Keys($"lEncryptedMessage {aPayload.EncryptedMessage.ToHexString}");
+      //Logging.Keys($"result.Payload {result.Payload}");
+      //Logging.Keys($"result.SignatureValid {result.SignatureValid}");
 
     end;
 
@@ -407,14 +430,14 @@ type
       var lNewUserInfo := FindUser(aPerson.ID, true);
       result := aPerson.PublicKeyData ≠ lNewUserInfo.PublicKeyData;
       if result then begin
-        Log($"got a new key");
+        Logging.Keys($"got a new key");
         aPerson.PublicKeyData := lNewUserInfo.PublicKeyData;
       end
       else begin
-        Log($"no new key");
+        Logging.Keys($"no new key");
       end;
-      Log($"old key {Convert.ToHexString(aPerson.PublicKeyData)}");
-      Log($"new key {Convert.ToHexString(lNewUserInfo.PublicKeyData)}");
+      Logging.Keys($"old key {Convert.ToHexString(aPerson.PublicKeyData)}");
+      Logging.Keys($"new key {Convert.ToHexString(lNewUserInfo.PublicKeyData)}");
     end;
 
   end;

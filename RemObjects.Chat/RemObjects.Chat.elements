@@ -14,10 +14,11 @@
     <WarnOnImplicitNotNullableCast>True</WarnOnImplicitNotNullableCast>
     <OutputPath>..\Bin</OutputPath>
     <GenerateDebugInfo>True</GenerateDebugInfo>
+    <KnownConditionalDefines>DEBUG;DEBUG_CONNECTIONS;DEBUG_DELIVERY;TRACE</KnownConditionalDefines>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <Optimize>False</Optimize>
-    <ConditionalDefines>DEBUG;TRACE;</ConditionalDefines>
+    <ConditionalDefines>DEBUG;DEBUG_DELIVERY;TRACE</ConditionalDefines>
     <GeneratePDB>True</GeneratePDB>
     <GenerateMDB>True</GenerateMDB>
     <EnableAsserts>True</EnableAsserts>
@@ -160,6 +161,7 @@
     <Compile Include="FolderBackedPackageStore.pas">
       <VirtualFolder>Package Stores</VirtualFolder>
     </Compile>
+    <Compile Include="Logging.pas" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>

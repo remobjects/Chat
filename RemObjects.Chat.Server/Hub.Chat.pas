@@ -38,7 +38,7 @@ type
           Hub.FindClient(u).Send(lPackage);
         except
           on E: Exception do
-            Log($"Could not deliver message to {u}:  {E}");
+            Logging.Error($"Could not deliver message to {u}:  {E}");
         end;
       end;
     end;
@@ -52,10 +52,10 @@ type
       case aPackage.Type of
         PackageType.Message: begin
             var lMessage := CreateMessage(aPackage);
-            Log($"Server: New message received: {lMessage}, {aPackage.Sent}");
+            Logging.Delivery($"Server: New message received: {lMessage}, {aPackage.Sent}");
             DeliverMessage(lMessage) ToAllBut(aPackage.SenderID);
             ChatManager.ActiveChatManager.MessageReceived(self, aPackage.SenderID, lMessage);
-            Log($"aPackage.RecipientID {aPackage.RecipientID}, aMessage.SenderID {lMessage.SenderID}");
+            Logging.Delivery($"aPackage.RecipientID {aPackage.RecipientID}, aMessage.SenderID {lMessage.SenderID}");
             SendStatusResponse(aPackage.SenderID, aPackage, MessageStatus.Received, DateTime.UtcNow);
           end;
         PackageType.Status: begin
@@ -67,7 +67,7 @@ type
               MessageStatus.FailedToDecrypt,
               MessageStatus.Displayed,
               MessageStatus.Read: begin
-                  Log($"Server: New status received for {aPackage.MessageID}: {lStatus}");
+                  Logging.Delivery($"Server: New status received for {aPackage.MessageID}: {lStatus}");
                   if DeliveryNotifications then
                     SendStatusResponse(aPackage.RecipientID, aPackage, lStatus, aPackage.Sent);
                 end;
