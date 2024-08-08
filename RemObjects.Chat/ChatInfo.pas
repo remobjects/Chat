@@ -33,10 +33,11 @@ type
     class method FromJson(aJson: JsonDocument): InstanceType;
     begin
       Log($"FromJson {aJson}, {length(aJson["name"]:StringValue) > 0}, '{aJson["name"]}'");
-      if length(aJson["name"]:StringValue) > 0 then
-        result := new GroupChatInfo withJson(aJson)
-      else
-        result := new PrivateChatInfo withJson(aJson)
+      case aJson["type"]:StringValue of
+        "private": result := new PrivateChatInfo withJson(aJson);
+        "group": result := new GroupChatInfo withJson(aJson);
+        else raise new Exception($"Unexpected chat type '{aJson["type"]:StringValue}'")
+      end;
     end;
 
     class method FromString(aJsonString: String): InstanceType;
@@ -59,6 +60,7 @@ type
 
     method ToJson: JsonObject; virtual;
     begin
+      Log($"ToJson");
       result := new JsonObject;
       result["id"] := ID.ToString;
       if assigned(UserIDs) then begin
@@ -84,6 +86,12 @@ type
   PrivateChatInfo = public class(ChatInfo)
   public
     property &Type: ChatType read ChatType.Private; override;
+
+    method ToJson: JsonObject; override;
+    begin
+      result := inherited;
+      result["type"] := "private";
+    end;
 
   end;
 
@@ -122,6 +130,7 @@ type
     method ToJson: JsonObject; override;
     begin
       result := inherited;
+      result["type"] := "group";
       result["name"] := Name;
       result["keys"] := KeyPair:ToJson;
     end;
