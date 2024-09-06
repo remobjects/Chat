@@ -160,7 +160,7 @@ type
           raise new ChatException($"Unexpected Package size for this request.");
       end;
 
-      Log($"ReadAuthentication {lUserID}, token {lAuthentcationToken}");
+      Logging.Connection($"ReadAuthentication {lUserID}, token {lAuthentcationToken}");
       if not Server.AuthenticateConnection(self, lUserID, lAuthentcationToken) then
         raise new Exception($"Authentication failed");
       //Logging.Connection($"Authenticated as {lUserID}");

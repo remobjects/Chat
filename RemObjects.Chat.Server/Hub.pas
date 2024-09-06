@@ -30,7 +30,7 @@ type
       end;
     end;
 
-    method FindClient(aUserID: Guid): HubClient;
+    method FindClient(aUserID: Guid): nullable HubClient;
     begin
       result := Clients[aUserID];
       if not assigned(result) then begin

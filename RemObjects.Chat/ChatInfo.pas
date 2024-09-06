@@ -27,16 +27,16 @@ type
     end;
 
     //
-    // This is not using Serialization because it will be used client-side too, and Serialixation isn't ported to Cocoa yet :(.
+    // This is not using Serialization because it will be used client-side too, and Serialization isn't ported to Cocoa yet :(.
     //
 
     class method FromJson(aJson: JsonDocument): InstanceType;
     begin
-      Log($"FromJson {aJson}, {length(aJson["name"]:StringValue) > 0}, '{aJson["name"]}'");
+      //Log($"FromJson {aJson}, {length(aJson["name"]:StringValue) > 0}, '{aJson["name"]}'");
       case aJson["type"]:StringValue of
         "private": result := new PrivateChatInfo withJson(aJson);
         "group": result := new GroupChatInfo withJson(aJson);
-        else raise new Exception($"Unexpected chat type '{aJson["type"]:StringValue}'")
+        else raise new Exception($"Unexpected chat type '{aJson["type"]:StringValue}' in {aJson.ToJsonString(JsonFormat.HumanReadable)}")
       end;
     end;
 
@@ -47,7 +47,7 @@ type
 
     constructor withJson(aJson: JsonDocument); unit;
     begin
-      Log($"base withJson");
+      //Log($"base withJson");
       if not assigned(aJson["id"]) then
         raise new Exception("ChatInfo json is missing field 'id'.");
       ID := Guid.TryParse(aJson["id"]) as not nullable;
@@ -60,7 +60,7 @@ type
 
     method ToJson: JsonObject; virtual;
     begin
-      Log($"ToJson");
+      //Log($"ToJson");
       result := new JsonObject;
       result["id"] := ID.ToString;
       if assigned(UserIDs) then begin
