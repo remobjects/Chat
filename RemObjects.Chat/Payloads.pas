@@ -66,6 +66,14 @@ type
   MessagePayload = public class(JsonPayload)
   public
 
+    constructor; empty;
+
+    constructor unencryptedWithMessage(aMessage: MessageInfo);
+    begin
+      EncryptedMessage := Encoding.UTF8.GetBytes(aMessage.Payload.ToJsonString(JsonFormat.Minimal));
+      IsEncrypted := false;
+    end;
+
     property EncryptedMessage: array of Byte read begin
       result := if assigned(Json["message"]:StringValue) then Convert.Base64StringToByteArray(Json["message"]:StringValue);
     end

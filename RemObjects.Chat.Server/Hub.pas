@@ -19,9 +19,9 @@ type
 
     end;
 
-    method FindChat(aChatID: not nullable Guid): HubChat;
+    method FindChat(aChatID: not nullable Guid; aForce: Boolean := false): HubChat; locked on self;
     begin
-      result := Chats[aChatID];
+      result := if not aForce then Chats[aChatID];
       if not assigned(result) then begin
         var lChatInfo := ChatController.Instance.FindChat(aChatID);
         if not assigned(lChatInfo) then
@@ -30,7 +30,7 @@ type
       end;
     end;
 
-    method FindClient(aUserID: Guid): nullable HubClient;
+    method FindClient(aUserID: Guid): nullable HubClient; locked on self;
     begin
       result := Clients[aUserID];
       if not assigned(result) then begin
@@ -103,8 +103,6 @@ type
     end;
 
   end;
-
-
 
   HubMessage = public class
   public

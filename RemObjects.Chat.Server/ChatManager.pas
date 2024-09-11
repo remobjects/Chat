@@ -26,6 +26,45 @@ type
 
     property ChatAuthentications := new Cache<Guid,Guid>(OneTimeAccess := true);
 
+    method SendLocalMessage(aSenderID: not nullable Guid; aPayloadJson: JsonNode) ToChat(aChatID: not nullable Guid);
+    begin
+      var lMessage := new RemObjects.Chat.MessageInfo;
+      lMessage.SenderID := aSenderID;
+      lMessage.ChatID := aChatID;
+      lMessage.ID := Guid.NewGuid;
+      lMessage.Payload := aPayloadJson;
+      SendLocalMessage(lMessage);
+    end;
+
+    method SendLocalMessage(aMessage: not nullable MessageInfo);
+    begin
+      //var lChat := if assigned(aChatInfo) then FindChat(aChatInfo) else FindChat(aMessage.ChatID);
+      //var lEncryptedMessage := EncryptMessage(aMessage, lChat);
+      var lEncryptedMessage := new MessagePayload unencryptedWithMessage(aMessage);
+
+      var lPackage := new Package(&Type := PackageType.Message,
+                                  ID := Guid.NewGuid,
+                                  SenderID := aMessage.SenderID,
+                                  ChatID := aMessage.ChatID,
+                                  MessageID := aMessage.ID,
+                                  Sent := coalesce(aMessage.Sent, DateTime.UtcNow),
+                                  Payload := lEncryptedMessage);
+      SendLocalPackage(lPackage);
+    end;
+
+    method SendLocalPackage(aPackage: Package);
+    begin
+      var lChat := Hub.Instance.FindChat(aPackage.ChatID, true);
+      if assigned(lChat) then begin
+
+        var lMessage := lChat.CreateMessage(aPackage);
+        Logging.Delivery($"Server: New message generated locally: {lMessage}, {aPackage.Sent}");
+        lChat.DeliverMessage(lMessage);
+        ChatManager.ActiveChatManager.MessageReceived(lChat, aPackage.SenderID, lMessage);
+
+      end;
+    end;
+
   end;
 
   InMemoryChatManager = public class(ChatManager)

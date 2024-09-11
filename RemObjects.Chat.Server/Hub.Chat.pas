@@ -30,7 +30,7 @@ type
       //raise new NotImplementedException("CreateMessage"); {$HINT for now}
     end;
 
-    method DeliverMessage(aMessage: HubMessage) ToAllBut(aAllButUserID: nullable Guid);
+    method DeliverMessage(aMessage: HubMessage) ToAllBut(aAllButUserID: nullable Guid := nil);
     begin
       var lPackage := aMessage.OriginalPackage;
       for each u in UserIDs do begin
