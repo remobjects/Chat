@@ -27,7 +27,7 @@ type
       end;
     end;
 
-    property Count: Integer read fPackages.Count; override;
+    property Count: nullable Integer read fPackages.Count; override;
     property Snapshot: sequence of Package read locking fPackages do fPackages.UniqueCopy; override;
 
   private

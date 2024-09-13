@@ -17,7 +17,7 @@ type
       end;
     end;
 
-    property Count: Integer read; abstract;
+    property Count: nullable Integer read; abstract;
     property Snapshot: sequence of Package read; abstract;
 
     property PackagesByChunk[aChunkID: Integer]: Package read GetPackagesByChunk write SetPackagesByChunk; virtual;

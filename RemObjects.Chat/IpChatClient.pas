@@ -87,7 +87,7 @@ type
     begin
       Logging.Connection($"Sending new package");
       PackageStore.SavePackage(aPackage);
-      Logging.Connection($"{PackageStore.Count} total package(s) pending, has connection? {assigned(fChatConnection)}");
+      Logging.Connection($"{coalesce(PackageStore.Count, "unknown number of")} total package(s) pending, has connection? {assigned(fChatConnection)}");
       if assigned(fChatConnection) then begin
         fChatConnection.SendPackage(aPackage) begin
           Logging.Connection($"Saving initial Chunk ID {aChunkID} for package {aPackage.ID}");
