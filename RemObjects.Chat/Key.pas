@@ -22,6 +22,13 @@ type
   SymmetricKey = public class
   public
 
+    constructor; empty; private;
+
+    constructor withKey(aKeyData: array of Byte);
+    begin
+      fBytes := aKeyData;
+    end;
+
     class method Generate(aType: KeyType): SymmetricKey;
     begin
       {$IF TOFFEE}

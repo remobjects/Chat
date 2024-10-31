@@ -273,26 +273,10 @@ type
         else raise new Exception($"Unexpected chat type {aChat.Type}.")
       end;
 
-      if lKeyPair:HasPublicKey then begin
-        if length(lData) < lKeyPair.Size then begin
-          result.Message := lKeyPair.EncryptWithPublicKey(lData);
-          result.Format := "rsa";
-        end
-        else begin
-          var lKey := SymmetricKey.Generate(KeyType.AES);
-          result.Key := lKeyPair.EncryptWithPublicKey(lKey.GetKey);
-          var lEncrypted := lKey.Encrypt(lData);
-          result.Message := lEncrypted[0];
-          result.IV := lKeyPair.EncryptWithPublicKey(lEncrypted[1]);
-          result.Format := "aes+rsa";
-        end;
-        result.IsEncrypted := lKeyPair:HasPublicKey;
-      end
-      else begin
-        result.Message := lData;
-        result.Format := "plain";
-        result.IsEncrypted := lKeyPair:HasPublicKey;
-      end;
+      if lKeyPair:HasPublicKey then
+        result.SetEncryptedDataWithPublicKey(lData, lKeyPair)
+      else
+        result.SetUnencryptedData(lData);
 
       if not OwnKeyPair:HasPrivateKey then
         raise new Exception("User does not have a private key set up.");
@@ -367,7 +351,7 @@ type
             //Logging.Keys($"aPayload.EncryptedMessage {Convert.ToHexString(aPayload.EncryptedMessage)}");
             //Logging.Keys($"aPayload.EncryptedMessage {Convert.ToAsciiString(aPayload.EncryptedMessage)}");
 
-            var lDecryptedMessage := if aPayload.IsEncrypted then OwnKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage) else aPayload.EncryptedMessage;
+            var lDecryptedMessage := aPayload.GetDecryptedDataWithPrivateKey(OwnKeyPair);
             var lString := Encoding.UTF8.GetString(lDecryptedMessage);
 
             result.Payload := JsonDocument.FromString(lString);
@@ -391,7 +375,7 @@ type
             if aPayload.IsEncrypted and (not assigned(aChat.SharedKeyPair) or not aChat.SharedKeyPair.HasPrivateKey) then
               raise new Exception("Payload is encrypted, but group chat has no private key.");
 
-            var lDecryptedMessage := if aPayload.IsEncrypted then aChat.SharedKeyPair.DecryptWithPrivateKey(aPayload.EncryptedMessage) else aPayload.EncryptedMessage;
+            var lDecryptedMessage := aPayload.GetDecryptedDataWithPrivateKey(aChat.SharedKeyPair);
             var lString := Encoding.UTF8.GetString(lDecryptedMessage);
 
             result.Payload := JsonDocument.FromString(lString);

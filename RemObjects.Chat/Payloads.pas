@@ -1,5 +1,8 @@
 ﻿namespace RemObjects.Chat;
 
+uses
+  RemObjects.Infrastructure.Encryption;
+
 type
   IPayload = public interface
     method ToByteArray: array of Byte;
@@ -68,11 +71,12 @@ type
 
     constructor; empty;
 
-    //constructor unencryptedWithMessage(aMessage: MessageInfo);
-    //begin
-      //Message := Encoding.UTF8.GetBytes(aMessage.Payload.ToJsonString(JsonFormat.Minimal));
-      //IsEncrypted := false;
-    //end;
+    constructor unencryptedWithMessage(aMessage: MessageInfo);
+    begin
+      Message := Encoding.UTF8.GetBytes(aMessage.Payload.ToJsonString(JsonFormat.Minimal));
+      Format := "plain";
+      IsEncrypted := false;
+    end;
 
     property Message: array of Byte read begin
       result := if assigned(Json["message"]:StringValue) then Convert.Base64StringToByteArray(Json["message"]:StringValue);
@@ -105,6 +109,52 @@ type
     property Format: String read Json["format"]:StringValue write Json["signature"];
 
     property IsEncrypted: nullable Boolean read valueOrDefault(Json["encrypted"]:BooleanValue) write Json["encrypted"];
+
+    method SetEncryptedDataWithPublicKey(aData: array of Byte; aKeyPair: KeyPair);
+    begin
+      if length(aData) < aKeyPair.Size then begin
+        Message := aKeyPair.EncryptWithPublicKey(aData);
+        Format := "rsa";
+      end
+      else begin
+        var lKey := SymmetricKey.Generate(KeyType.AES);
+        Key := aKeyPair.EncryptWithPublicKey(lKey.GetKey);
+        var lEncrypted := lKey.Encrypt(aData);
+        Message := lEncrypted[0];
+        IV := aKeyPair.EncryptWithPublicKey(lEncrypted[1]);
+        Format := "aes+rsa";
+      end;
+      IsEncrypted := true;
+    end;
+
+    method GetDecryptedDataWithPrivateKey(aKeyPair: KeyPair): array of Byte;
+    begin
+      if IsEncrypted then begin
+        case Format of
+          "rsa", nil: begin
+              result := aKeyPair.DecryptWithPrivateKey(Message);
+            end;
+          "aes+rsa": begin
+              var lIV := aKeyPair.DecryptWithPrivateKey(IV);
+              var lKey := aKeyPair.DecryptWithPrivateKey(Key);
+              result := new SymmetricKey withKey(lKey).Decrypt(Message, lIV);
+            end;
+        end;
+
+      end
+      else begin
+        result := Message;
+      end;
+    end;
+
+    method SetUnencryptedData(aData: array of Byte);
+    begin
+      Message := aData;
+      Format := "plain";
+      IsEncrypted := false;
+    end;
+
+
 
   end;
 
