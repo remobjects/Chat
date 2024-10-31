@@ -68,17 +68,31 @@ type
 
     constructor; empty;
 
-    constructor unencryptedWithMessage(aMessage: MessageInfo);
-    begin
-      EncryptedMessage := Encoding.UTF8.GetBytes(aMessage.Payload.ToJsonString(JsonFormat.Minimal));
-      IsEncrypted := false;
-    end;
+    //constructor unencryptedWithMessage(aMessage: MessageInfo);
+    //begin
+      //Message := Encoding.UTF8.GetBytes(aMessage.Payload.ToJsonString(JsonFormat.Minimal));
+      //IsEncrypted := false;
+    //end;
 
-    property EncryptedMessage: array of Byte read begin
+    property Message: array of Byte read begin
       result := if assigned(Json["message"]:StringValue) then Convert.Base64StringToByteArray(Json["message"]:StringValue);
     end
     write begin
       Json["message"] := Convert.ToBase64String(value);
+    end;
+
+    property Key: array of Byte read begin
+      result := if assigned(Json["key"]:StringValue) then Convert.Base64StringToByteArray(Json["key"]:StringValue);
+    end
+    write begin
+      Json["key"] := Convert.ToBase64String(value);
+    end;
+
+    property IV: array of Byte read begin
+      result := if assigned(Json["iv"]:StringValue) then Convert.Base64StringToByteArray(Json["iv"]:StringValue);
+    end
+    write begin
+      Json["iv"] := Convert.ToBase64String(value);
     end;
 
     property Signature: array of Byte read begin
@@ -87,6 +101,8 @@ type
     write begin
       Json["signature"] := Convert.ToBase64String(value);
     end;
+
+    property Format: String read Json["format"]:StringValue write Json["signature"];
 
     property IsEncrypted: nullable Boolean read valueOrDefault(Json["encrypted"]:BooleanValue) write Json["encrypted"];
 

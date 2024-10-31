@@ -16,12 +16,152 @@ uses
 
 
 type
-  KeyType = public enum(RSA, EC);
+  KeyType = public enum(RSA, EC, AES);
   KeyFormat = public enum(Bytes, PEM, Pkcs8);
+
+  SymmetricKey = public class
+  public
+
+    class method Generate(aType: KeyType): SymmetricKey;
+    begin
+      {$IF TOFFEE}
+      const lKeyLength = kCCKeySizeAES256;
+      var lKeyData := NSMutableData.dataWithLength(lKeyLength);
+      if SecRandomCopyBytes(kSecRandomDefault, lKeyLength, lKeyData.mutableBytes) ≠ 0 then
+        raise new Exception();
+
+      result := new SymmetricKey;
+      result.fBytes := new Byte[lKeyData.length];
+      memcpy(@result.fBytes[0], lKeyData.mutableBytes, lKeyData.length);
+      {$ENDIF}
+      {$IF ECHOES}
+      var lAes := Aes.Create();
+      lAes.GenerateKey();
+      result := new SymmetricKey;
+      result.fBytes := lAes.Key;
+      {$ENDIF}
+    end;
+
+    method GetKey: array of Byte;
+    begin
+      result := fBytes;
+    end;
+
+    method Encrypt(aData: array of Byte): not nullable tuple of (not nullable array of Byte, not nullable array of Byte);
+    begin
+      {$IF TOFFEE}
+
+      // Generate random bytes for the key and IV
+      var ivData := NSMutableData.dataWithLength(kCCBlockSizeAES128);
+      if SecRandomCopyBytes(kSecRandomDefault, kCCBlockSizeAES128, ivData.mutableBytes) ≠ 0 then
+        raise new Exception();
+
+      const lKeyLength = kCCKeySizeAES256;
+      var options := kCCOptionPKCS7Padding or kCCOptionECBMode;
+      var lEncryptedData := NSMutableData.dataWithLength(length(aData) + kCCBlockSizeAES128);
+
+      var lNumberOfBytesDecrypted: size_t := 0;
+      if CCCrypt(
+        kCCEncrypt,               // Operation: Encrypt
+        kCCAlgorithmAES,          // Algorithm: AES
+        options,                  // Options: PKCS7 padding and ECB mode
+        @fBytes[0],               // Key
+        lKeyLength,               // Key length
+        ivData.bytes,             // No initialization vector (IV) for ECB
+        @aData[0],                // Input data
+        length(aData),            // Input length
+        lEncryptedData.mutableBytes,  // Output buffer
+        lEncryptedData.length,        // Output buffer size
+        @lNumberOfBytesDecrypted        // Output: number of bytes encrypted
+      ) ≠ 0 /*kSuccess*/ then
+        raise new Exception();
+
+      lEncryptedData.setLength(lNumberOfBytesDecrypted);
+
+      var lEncryptedBytes := new Byte[lEncryptedData.length];
+      var lIVBytes := new Byte[ivData.length];
+      lEncryptedData.getBytes(@lEncryptedBytes[0]) length(lEncryptedData.length);
+      ivData.getBytes(@lIVBytes[0]) length(lEncryptedData.length);
+      result := (lEncryptedBytes, lIVBytes);
+      {$ENDIF}
+
+      {$IF ECHOES}
+      {$HINT duped from Infrastructure CryptoHelpers}
+      var lAes := Aes.Create();
+      lAes.KeySize := 256;
+      lAes.Key := fBytes;
+      lAes.GenerateIV;
+      lAes.Mode := CipherMode.CBC;
+      var lTransform := lAes.CreateEncryptor(lAes.Key, lAes.IV);
+        using ms := new MemoryStream(aData) do begin
+          using cs := new CryptoStream(ms, lTransform, CryptoStreamMode.Read) do begin
+            using ds := new MemoryStream do begin
+              cs.CopyTo(ds);
+              result := (ds.ToArray, lAes.IV);
+            end;
+          end;
+        end;
+      {$ENDIF}
+    end;
+
+    method Decrypt(aData: array of Byte; aIV: array of Byte): not nullable array of Byte;
+    begin
+      {$IF TOFFEE}
+      const lKeyLength = kCCKeySizeAES256;
+      var options := kCCOptionPKCS7Padding;
+      var lDecryptedData := NSMutableData.dataWithLength(length(aData) + kCCBlockSizeAES128);
+
+      var lNumberOfBytesDecrypted: size_t := 0;
+      if CCCrypt(
+        kCCDecrypt,               // Operation: Decrypt
+        kCCAlgorithmAES,          // Algorithm: AES
+        options,                  // Options: PKCS7 padding, CBC mode (without ECB)
+        @fBytes[0],               // Key
+        lKeyLength,               // Key length
+        @aIV[0],                  // IV (must match the one used for encryption)
+        @aData[0],                // Input data
+        length(aData),            // Input length
+        lDecryptedData.mutableBytes, // Output buffer
+        lDecryptedData.length,       // Output buffer size
+        @lNumberOfBytesDecrypted           // Output: number of bytes decrypted
+      ) ≠ 0 /*kSuccess*/ then
+        raise new Exception();
+
+      lDecryptedData.setLength(lNumberOfBytesDecrypted);
+
+      result := new Byte[lDecryptedData.length];
+      lDecryptedData.getBytes(@result[0]) length(lDecryptedData.length);
+      {$ENDIF}
+
+      {$IF ECHOES}
+      var lAes := Aes.Create();
+      lAes.KeySize := 256;
+      lAes.Key := fBytes;
+      lAes.IV := aIV;
+      lAes.Mode := CipherMode.CBC;
+      var lTransform: ICryptoTransform := lAes.CreateDecryptor(lAes.Key, lAes.IV);
+      using ms := new MemoryStream(aData) do begin
+        using cs := new CryptoStream(ms, lTransform, CryptoStreamMode.Read) do begin
+          using ds := new MemoryStream do begin
+            cs.CopyTo(ds);
+            result := ds.ToArray as not nullable;
+          end;
+        end;
+      end;
+      {$ENDIF}
+    end;
+
+  private
+
+    var fBytes: array of Byte;
+
+  end;
 
   //[Codable]
   KeyPair = public class//(ICodable)
   public
+
+    property Size: Integer := (2048/8); {$HINT deterine dynamically?}
 
     class method Generate(aType: KeyType): KeyPair;
     begin
@@ -466,7 +606,7 @@ type
 
     method PemToDer(aKeyData: String): array of Byte;
     begin
-      aKeyData := aKeyData.trim
+      aKeyData := aKeyData.Trim
                           .SubstringFromFirstOccurrenceOf(#10)
                           .SubstringToLastOccurrenceOf(#10)
                           .Replace(#13, "")
