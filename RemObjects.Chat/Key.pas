@@ -54,7 +54,9 @@ type
       result := fBytes;
     end;
 
-    method Encrypt(aData: array of Byte): not nullable tuple of (not nullable array of Byte, not nullable array of Byte);
+    //https://git.remobjects.com/remobjects/elements/-/issues/27041
+    //method Encrypt(aData: array of Byte): not nullable tuple of (not nullable array of Byte, not nullable array of Byte);
+    method Encrypt(aData: array of Byte; out aIV: nullable array of Byte): not nullable array of Byte;
     begin
       {$IF TOFFEE}
 
@@ -64,7 +66,7 @@ type
         raise new Exception();
 
       const lKeyLength = kCCKeySizeAES256;
-      var options := kCCOptionPKCS7Padding or kCCOptionECBMode;
+      var options := kCCOptionPKCS7Padding;
       var lEncryptedData := NSMutableData.dataWithLength(length(aData) + kCCBlockSizeAES128);
 
       var lNumberOfBytesDecrypted: size_t := 0;
@@ -89,7 +91,9 @@ type
       var lIVBytes := new Byte[ivData.length];
       lEncryptedData.getBytes(@lEncryptedBytes[0]) length(lEncryptedData.length);
       ivData.getBytes(@lIVBytes[0]) length(lEncryptedData.length);
-      result := (lEncryptedBytes, lIVBytes);
+      //result := (lEncryptedBytes, lIVBytes);
+      result := lEncryptedBytes as not nullable;
+      aIV := lIVBytes;
       {$ENDIF}
 
       {$IF ECHOES}
@@ -104,7 +108,9 @@ type
           using cs := new CryptoStream(ms, lTransform, CryptoStreamMode.Read) do begin
             using ds := new MemoryStream do begin
               cs.CopyTo(ds);
-              result := (ds.ToArray, lAes.IV);
+              //result := (ds.ToArray, lAes.IV);
+              result := ds.ToArray;
+              aIV := lAes.IV;
             end;
           end;
         end;

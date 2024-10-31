@@ -250,38 +250,50 @@ type
       fMessages[aMessageID] := nil;
     end;
 
+    method EncryptAttachment(aAttachment: JsonPayloadWithAttachment; aChatID: Guid; aChatInfo: nullable ChatInfo := nil): JsonPayloadWithAttachment;
+    begin
+      var lChat := if assigned(aChatInfo) then FindChat(aChatInfo) else FindChat(aChatID);
+      var lKeyPair := KeyPairForChat(lChat);
+      result := new JsonPayloadWithAttachment;
+      result.SetEncryptedDataWithPublicKey(aAttachment.Bytes, lKeyPair);
+      result.Json["chatId"] := lChat.ChatID.ToString;
+    end;
+
+    method DecryptAttachment(aAttachment: JsonPayloadWithAttachment; aChatID: Guid; aChatInfo: nullable ChatInfo := nil): JsonPayloadWithAttachment;
+    begin
+      var lChat := if assigned(aChatInfo) then FindChat(aChatInfo) else FindChat(aChatID);
+      var lKeyPair := KeyPairForChat(lChat);
+      result := new JsonPayloadWithAttachment withBytes(aAttachment.GetDecryptedDataWithPrivateKey(lKeyPair));
+    end;
+
     property MaximumDeliveryAttempts: Integer := 5;
 
   private
 
     var fMessages := new Dictionary<Guid,MessageInfo>;
 
+    method KeyPairForChat(aChat: Chat): nullable KeyPair;
+    begin
+      result := case aChat.Type of
+        ChatType.Private: FindUser(aChat.UserIDs.First(u -> u ≠ UserID)).PublicKey;
+        ChatType.Group: aChat.SharedKeyPair;
+        else raise new Exception($"Unexpected chat type {aChat.Type}.")
+      end;
+    end;
+
     method EncryptMessage(aMessage: MessageInfo; aChat: Chat): MessagePayload;
     begin
       var lStringData := aMessage.Payload.ToJsonString(JsonFormat.Minimal);
       var lData := Encoding.UTF8.GetBytes(lStringData);
 
+      var lKeyPair := KeyPairForChat(aChat);
       result := new MessagePayload;
-      //if aChat.PublicKey:HasPublicKey then
-        //Logging.Keys($"EncryptMessage PublicKey: {Convert.ToHexString(length(aChat.PublicKey:GetPublicKey), 8)} {aChat.PublicKey:GetPublicKey.ToHexString}")
-      //else
-        //Logging.Keys($"EncryptMessage PublicKey: none");
-
-      var lKeyPair := case aChat.Type of
-        ChatType.Private: FindUser(aChat.UserIDs.First(u -> u ≠ UserID)).PublicKey;
-        ChatType.Group: aChat.SharedKeyPair;
-        else raise new Exception($"Unexpected chat type {aChat.Type}.")
-      end;
-
-      if lKeyPair:HasPublicKey then
-        result.SetEncryptedDataWithPublicKey(lData, lKeyPair)
-      else
-        result.SetUnencryptedData(lData);
+      result.SetEncryptedDataWithPublicKey(lData, lKeyPair);
 
       if not OwnKeyPair:HasPrivateKey then
         raise new Exception("User does not have a private key set up.");
 
-      result.Signature := OwnKeyPair.SignWithPrivateKey(lData);
+      //result.Signature := OwnKeyPair.SignWithPrivateKey(lData);
 
       //Logging.Keys($"-- encode --");
       //Logging.Keys($"StringData       {Convert.ToHexString(length(lStringData), 8)} {lStringData}");
@@ -326,7 +338,7 @@ type
       //Logging.Keys($"EncryptedMessage {Convert.ToHexString(length(lPayload.EncryptedMessage), 8)} {lPayload.EncryptedMessage.ToHexString}");
 
 
-      Log($"aPayload.IsEncrypted {aPayload.IsEncrypted}");
+      //Log($"aPayload.IsEncrypted {aPayload.IsEncrypted}");
       Log($"aChat {aChat}");
       Log($"aChat.SharedKeyPair {aChat.SharedKeyPair}");
       if assigned(aChat.SharedKeyPair) then
@@ -337,8 +349,6 @@ type
         ChatType.Private: begin
 
           Log($"Private chat");
-          if aPayload.IsEncrypted and not assigned(OwnKeyPair) or not OwnKeyPair.HasPrivateKey then
-            raise new Exception("Payload is encrypted, but user has no own private key.");
 
           //Logging.Keys($"OwnPrivateKey    {Convert.ToHexString(length(OwnKeyPair:GetPrivateKey), 8)} {OwnKeyPair:GetPrivateKey.ToHexString(" ", 16)}");
 
@@ -358,11 +368,11 @@ type
 
             //Logging.Keys($"DecodePayload PublicKey: {Convert.ToHexString(length(result.Sender:PublicKey:GetPublicKey), 8)} {result.Sender:PublicKey:GetPublicKey.ToHexString}");
             if result.Sender:PublicKey:HasPublicKey then begin
-              result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
+              result.SignatureValid := aPayload.ValidateSignatureWithPublicKey(result.Sender.PublicKey);
               Logging.Keys($"result.SignatureValid {result.SignatureValid}");
               if not result.SignatureValid then begin
                 if RefreshPublicKey(result.Sender) then
-                  result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
+                  result.SignatureValid := aPayload.ValidateSignatureWithPublicKey(result.Sender.PublicKey);
                 Logging.Keys($"result.SignatureValid {result.SignatureValid}, now");
               end;
             end;
@@ -372,19 +382,16 @@ type
 
             Log($"Group chat");
 
-            if aPayload.IsEncrypted and (not assigned(aChat.SharedKeyPair) or not aChat.SharedKeyPair.HasPrivateKey) then
-              raise new Exception("Payload is encrypted, but group chat has no private key.");
-
             var lDecryptedMessage := aPayload.GetDecryptedDataWithPrivateKey(aChat.SharedKeyPair);
             var lString := Encoding.UTF8.GetString(lDecryptedMessage);
 
             result.Payload := JsonDocument.FromString(lString);
 
             if assigned(result.Sender:PublicKey) then begin
-              result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
+              result.SignatureValid := aPayload.ValidateSignatureWithPublicKey(result.Sender.PublicKey);
               if not result.SignatureValid then begin
                 if RefreshPublicKey(result.Sender) then
-                  result.SignatureValid := result.Sender.PublicKey.ValidateSignatureWithPublicKey(lDecryptedMessage, aPayload.Signature);
+                  result.SignatureValid := aPayload.ValidateSignatureWithPublicKey(result.Sender.PublicKey);
               end;
             end;
 

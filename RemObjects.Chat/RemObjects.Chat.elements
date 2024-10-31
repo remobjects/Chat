@@ -127,7 +127,9 @@
       <Virtual>True</Virtual>
     </Folder>
     <Compile Include="Package.pas" />
-    <Compile Include="Payloads.pas" />
+    <Compile Include="MessagePayloads.pas">
+      <VirtualFolder>Payloads</VirtualFolder>
+    </Compile>
     <Compile Include="BaseClient.pas" />
     <Compile Include="ChatInfo.pas" />
     <Compile Include="ChatController.pas" />
@@ -162,6 +164,12 @@
       <VirtualFolder>Package Stores</VirtualFolder>
     </Compile>
     <Compile Include="Logging.pas" />
+    <Compile Include="Payloads.pas">
+      <VirtualFolder>Payloads</VirtualFolder>
+    </Compile>
+    <Folder Include="Payloads">
+      <Virtual>True</Virtual>
+    </Folder>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\RemObjects Software\Elements\RemObjects.Elements.targets" />
 </Project>

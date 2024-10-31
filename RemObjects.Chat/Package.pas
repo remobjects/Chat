@@ -18,7 +18,7 @@ type
     property ChatID: /*not nullable*/ Guid; //required;
     property MessageID: /*not nullable*/ Guid; //required;
     property Sent: /*not nullable*/ DateTime := DateTime.UtcNow;
-    property Payload: IPayload;
+    property Payload: Payload;
     property Expiration: nullable DateTime;
 
     { IPersistent }
@@ -38,7 +38,7 @@ type
       lWriter.WriteUInt8(if assigned(Expiration) then 1 else 0);
       if assigned(Expiration) then
         lWriter.WriteDouble(Expiration.ToOADate);
-      lWriter.WriteByteArray(Payload.ToByteArray);
+      lWriter.WriteByteArray(Payload.Data);
       result := lBinary.ToArray;
     end;
 

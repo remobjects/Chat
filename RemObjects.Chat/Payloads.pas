@@ -4,16 +4,53 @@ uses
   RemObjects.Infrastructure.Encryption;
 
 type
-  IPayload = public interface
-    method ToByteArray: array of Byte;
+  Payload = public abstract class
+
+    constructor; empty;
+
+    constructor withBytes(aBytes: array of Byte);
+    begin
+      Bytes := aBytes;
+    end;
+
+    property Data: array of Byte read write; abstract;
+    property Bytes: array of Byte read Data write Data; virtual;
 
     method Save(aFilename: String);
+    begin
+      File.WriteBytes(aFilename, Data);
+    end;
+
     method Load(aFilename: String);
-    method Load(aBytes: array of Byte; aOffset: Integer := 0);
+    begin
+      Bytes := File.ReadBytes(aFilename);
+    end;
+
+    method Load(aBytes: array of Byte);
+    begin
+      Bytes := aBytes;
+    end;
+
+    method Load(aBytes: array of Byte; aOffset: Integer; aLength: Integer := -1);
+    begin
+      if aLength > 0 then begin
+        var lData := new Byte[aLength];
+        &Array.Copy(aBytes, aOffset, lData, 0, length(lData));
+        Bytes := lData;
+      end
+      else if aOffset > 0 then begin
+        var lData := new Byte[length(aBytes)-aOffset];
+        &Array.Copy(aBytes, aOffset, lData, 0, length(lData));
+        Bytes := lData;
+      end
+      else begin
+        Bytes := aBytes;
+      end;
+    end;
 
     method ToBase64: String;
     begin
-      result := Convert.ToBase64String(ToByteArray);
+      result := Convert.ToBase64String(Data);
     end;
 
   end;
@@ -22,174 +59,206 @@ type
   //
   //
 
-  JsonPayload = public class(IPayload)
+  EncryptablePayload = public abstract class(Payload)
   public
 
-    constructor; empty;
-
-    constructor (aJson: not nullable JsonDocument);
+    method SetUnencryptedData(aData: array of Byte);
     begin
-      Json := aJson;
-    end;
-
-    property Json: JsonDocument read private write := new JsonObject;
-
-    method ToByteArray: array of Byte; //override;
-    begin
-      result := Encoding.UTF8.GetBytes(Json.ToJsonString(JsonFormat.Minimal));
-    end;
-
-    method Save(aFilename: String);
-    begin
-      File.WriteText(aFilename, Json.ToJsonString);
-    end;
-
-    method Load(aFilename: String);
-    begin
-      Json := JsonDocument.FromFile(aFilename);
-    end;
-
-    method Load(aBytes: array of Byte; aOffset: Integer := 0);
-    begin
-      Json := JsonDocument.FromString(Encoding.UTF8.GetString(aBytes, aOffset));
-    end;
-
-    [ToString]
-    method ToString: String; override;
-    begin
-      result := Json.ToJsonString;
-    end;
-
-  end;
-
-  //
-  //
-  //
-
-  MessagePayload = public class(JsonPayload)
-  public
-
-    constructor; empty;
-
-    constructor unencryptedWithMessage(aMessage: MessageInfo);
-    begin
-      Message := Encoding.UTF8.GetBytes(aMessage.Payload.ToJsonString(JsonFormat.Minimal));
+      Data := aData;
       Format := "plain";
       IsEncrypted := false;
     end;
 
-    property Message: array of Byte read begin
-      result := if assigned(Json["message"]:StringValue) then Convert.Base64StringToByteArray(Json["message"]:StringValue);
+    method SetEncryptedDataWithPublicKey(aData: array of Byte; aKeyPair: nullable KeyPair);
+    begin
+      if assigned(aKeyPair) and (aKeyPair.HasPublicKey) then begin
+        if length(aData) < aKeyPair.Size then begin
+          Data := aKeyPair.EncryptWithPublicKey(aData);
+          Format := "rsa";
+        end
+        else begin
+          var lKey := SymmetricKey.Generate(KeyType.AES);
+          Log($"Generated Key {Convert.ToHexString(lKey.GetKey)}");
+          Key := aKeyPair.EncryptWithPublicKey(lKey.GetKey);
+
+          //https://git.remobjects.com/remobjects/elements/-/issues/27041
+          //var lEncrypted := lKey.Encrypt(aData);
+          //Data := lEncrypted[0];
+          //IV := aKeyPair.EncryptWithPublicKey(lEncrypted[1]);
+          Data := lKey.Encrypt(aData, out var lIV);
+          Log($"Generated IV {Convert.ToHexString(lIV)}");
+          IV := aKeyPair.EncryptWithPublicKey(lIV);
+
+          Log($"original  {Convert.ToHexString(aData)}");
+          Log($"data      {Convert.ToHexString(Data)}");
+
+          Format := "aes+rsa";
+        end;
+        Signature := if aKeyPair.HasPrivateKey then
+          aKeyPair.SignWithPrivateKey(aData);
+        IsEncrypted := true;
+      end
+      else begin
+        SetUnencryptedData(aData);
+      end;
+    end;
+
+    method GetDecryptedDataWithPrivateKey(aKeyPair: KeyPair): array of Byte;
+    begin
+      if IsEncrypted then begin
+
+        if not assigned(aKeyPair) or not aKeyPair.HasPrivateKey then
+          raise new Exception("Payload is encrypted, but no private key is set.");
+
+        case Format of
+          "rsa", nil: begin
+            result := aKeyPair.DecryptWithPrivateKey(Data);
+            end;
+          "aes+rsa": begin
+            var lIV := aKeyPair.DecryptWithPrivateKey(IV);
+            Log($"Read IV {Convert.ToHexString(lIV)}");
+            var lKey := aKeyPair.DecryptWithPrivateKey(Key);
+            Log($"Read Key {Convert.ToHexString(lKey)}");
+            result := new SymmetricKey withKey(lKey).Decrypt(Data, lIV);
+            Log($"data      {Convert.ToHexString(Data)}");
+            Log($"decrypted {Convert.ToHexString(result)}");
+          end;
+        end;
+
+      end
+      else begin
+        result := Data;
+      end;
+    end;
+
+    method ValidateSignatureWithPublicKey(aKeyPair: KeyPair): Boolean;
+    begin
+      if assigned(Signature) then
+        aKeyPair.ValidateSignatureWithPublicKey(Data, Signature);
+    end;
+
+  protected
+
+    property IsEncrypted: Boolean read write; abstract;
+    property Signature: array of Byte read write; abstract;
+    property Format: String read write; abstract;
+    property Key: array of Byte read write; abstract;
+    property IV: array of Byte read write; abstract;
+
+  end;
+
+  JsonPayload = public class(EncryptablePayload)
+  public
+
+    constructor;
+    begin
+      Json := JsonDocument.CreateObject;
+    end;
+
+    constructor withBytes(aData: array of Byte);
+    begin
+      Json := JsonDocument.CreateObject;
+    end;
+
+    constructor withJson(aJson: nullable JsonObject);
+    begin
+      Json := coalesce(aJson, JsonDocument.CreateObject);
+    end;
+
+    property Json: JsonNode;
+
+    property Data: array of Byte read begin
+      result := if assigned(Json[DataNodeName]:StringValue) then Convert.Base64StringToByteArray(Json[DataNodeName]:StringValue);
     end
     write begin
-      Json["message"] := Convert.ToBase64String(value);
-    end;
+      Json[DataNodeName] := Convert.ToBase64String(value);
+    end; override;
+
+  protected
+
+    property DataNodeName: String read "data"; virtual;
+
+    property Format: String read Json["format"]:StringValue write Json["format"]; override;
+    property IsEncrypted: Boolean read valueOrDefault(Json["encrypted"]:BooleanValue) write Json["encrypted"]; override;
 
     property Key: array of Byte read begin
       result := if assigned(Json["key"]:StringValue) then Convert.Base64StringToByteArray(Json["key"]:StringValue);
     end
     write begin
       Json["key"] := Convert.ToBase64String(value);
-    end;
+    end; override;
 
     property IV: array of Byte read begin
       result := if assigned(Json["iv"]:StringValue) then Convert.Base64StringToByteArray(Json["iv"]:StringValue);
     end
     write begin
       Json["iv"] := Convert.ToBase64String(value);
-    end;
+    end; override;
 
     property Signature: array of Byte read begin
       result := if assigned(Json["signature"]:StringValue) then Convert.Base64StringToByteArray(Json["signature"]:StringValue);
     end
     write begin
       Json["signature"] := Convert.ToBase64String(value);
-    end;
+    end; override;
 
-    property Format: String read Json["format"]:StringValue write Json["signature"];
-
-    property IsEncrypted: nullable Boolean read valueOrDefault(Json["encrypted"]:BooleanValue) write Json["encrypted"];
-
-    method SetEncryptedDataWithPublicKey(aData: array of Byte; aKeyPair: KeyPair);
+    [ToString]
+    method ToString: String; override;
     begin
-      if length(aData) < aKeyPair.Size then begin
-        Message := aKeyPair.EncryptWithPublicKey(aData);
-        Format := "rsa";
-      end
-      else begin
-        var lKey := SymmetricKey.Generate(KeyType.AES);
-        Key := aKeyPair.EncryptWithPublicKey(lKey.GetKey);
-        var lEncrypted := lKey.Encrypt(aData);
-        Message := lEncrypted[0];
-        IV := aKeyPair.EncryptWithPublicKey(lEncrypted[1]);
-        Format := "aes+rsa";
-      end;
-      IsEncrypted := true;
+      result := $"<JsonPayLoad {Json.ToJsonString(JsonFormat.HumanReadable)}>"
     end;
-
-    method GetDecryptedDataWithPrivateKey(aKeyPair: KeyPair): array of Byte;
-    begin
-      if IsEncrypted then begin
-        case Format of
-          "rsa", nil: begin
-              result := aKeyPair.DecryptWithPrivateKey(Message);
-            end;
-          "aes+rsa": begin
-              var lIV := aKeyPair.DecryptWithPrivateKey(IV);
-              var lKey := aKeyPair.DecryptWithPrivateKey(Key);
-              result := new SymmetricKey withKey(lKey).Decrypt(Message, lIV);
-            end;
-        end;
-
-      end
-      else begin
-        result := Message;
-      end;
-    end;
-
-    method SetUnencryptedData(aData: array of Byte);
-    begin
-      Message := aData;
-      Format := "plain";
-      IsEncrypted := false;
-    end;
-
-
 
   end;
 
-
-  StatusPayload = public class(JsonPayload)
+  JsonPayloadWithAttachment = public class(JsonPayload)
   public
 
-    property Status: MessageStatus read begin
-      result := case Json["status"]:StringValue of
-        "received": MessageStatus.Received;
-        "delivered": MessageStatus.Delivered;
-        "decrypted": MessageStatus.Decrypted;
-        "failedToDecrypt": MessageStatus.FailedToDecrypt;
-        "displayed": MessageStatus.Displayed;
-        "read": MessageStatus.Read;
-      end;
-    end
-    write begin
-      Json["status"] := case value of
-        MessageStatus.Received: "received";
-        MessageStatus.Delivered: "delivered";
-        MessageStatus.Decrypted: "decrypted";
-        MessageStatus.FailedToDecrypt: "failedToDecrypt";
-        MessageStatus.Displayed: "displayed";
-        MessageStatus.Read: "read";
-      end;
+    constructor; empty;
+    constructor withJson(aJson: nullable JsonObject); empty;
+
+    constructor withBytes(aData: array of Byte);
+    begin
+      Bytes := aData;
     end;
 
+    constructor withJson(aJson: nullable JsonObject; aBinary: nullable array of Byte);
+    begin
+      Data := aBinary;
+      Json := coalesce(aJson, JsonDocument.CreateObject);
+    end;
 
-    property Date: DateTime read begin
-      DateTime.TryParseISO8601(Json["date"]);
+    property Data: array of Byte/* read fData write fData*/; override;
+
+    property Bytes: array of Byte read begin
+      var lJson := Encoding.UTF8.GetBytes(Json.ToJsonString(JsonFormat.Minimal));
+      var lData := new Byte[1+length(lJson)+1+length(Data)];
+      &Array.Copy(lJson, 0, lData, 1, length(lJson));
+      &Array.Copy(Data, 0, lData, length(lJson)+2, length(lData));
+      lData[0] := #2;
+      lData[length(lJson)+1] := #0;
+      result := lData;
     end
     write begin
-      Json["date"] := value.ToISO8601String;
+      if value[0] ≠ #2 then
+        raise new Exception("Invalid payload format");
+      var i := 0;
+      for i := 0 to length(value)-1 do
+        if value[i] = 0 then
+          break;
+      if (i > 0) and (i < length(value)-1) then begin
+        Json := JsonDocument.FromString(Encoding.UTF8.GetString(value, 1, i-1)) as JsonObject;
+        Data := new Byte[length(value)-i];
+        &Array.Copy(value, i+1, Data, 0, length(Data));
+      end;
+    end; override;
+
+    [ToString]
+    method ToString: String; override;
+    begin
+      result := $"<JsonPayload {Json.ToJsonString(JsonFormat.HumanReadable)} with {length(Data)} attachment>"
     end;
+
+  protected
 
   end;
 
