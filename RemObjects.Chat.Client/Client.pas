@@ -250,20 +250,19 @@ type
       fMessages[aMessageID] := nil;
     end;
 
-    method EncryptAttachment(aAttachment: JsonPayloadWithAttachment; aChatID: Guid; aChatInfo: nullable ChatInfo := nil): JsonPayloadWithAttachment;
+    method UploadChatAttachment(aChatID: not nullable Guid; aChatInfo: nullable ChatInfo := nil; aAttachment: JsonPayloadWithAttachment): not nullable Guid;
     begin
       var lChat := if assigned(aChatInfo) then FindChat(aChatInfo) else FindChat(aChatID);
-      var lKeyPair := KeyPairForChat(lChat);
-      result := new JsonPayloadWithAttachment;
-      result.SetEncryptedDataWithPublicKey(aAttachment.Bytes, lKeyPair);
-      result.Json["chatId"] := lChat.ChatID.ToString;
+      var lEncryptedAttachment := EncryptAttachment(aAttachment, lChat);
+      result := (self.ChatControllerProxy as IChatControllerAttachmentProxy).UploadAttachment(aChatID, lEncryptedAttachment.Bytes);
     end;
 
-    method DecryptAttachment(aAttachment: JsonPayloadWithAttachment; aChatID: Guid; aChatInfo: nullable ChatInfo := nil): JsonPayloadWithAttachment;
+    method DownloadChatAttachment(aChatID: not nullable Guid; aChatInfo: nullable ChatInfo := nil; aAttachmentID: nullable Guid): not nullable JsonPayloadWithAttachment;
     begin
       var lChat := if assigned(aChatInfo) then FindChat(aChatInfo) else FindChat(aChatID);
-      var lKeyPair := KeyPairForChat(lChat);
-      result := new JsonPayloadWithAttachment withBytes(aAttachment.GetDecryptedDataWithPrivateKey(lKeyPair));
+      var lEncryptedAttachmentBytes := (self.ChatControllerProxy as IChatControllerAttachmentProxy).DownloadAttachment(aChatID, aAttachmentID);
+      var lEncryptedAttachment := new JsonPayloadWithAttachment withBytes(lEncryptedAttachmentBytes);
+      result := DecryptAttachment(lEncryptedAttachment, lChat);
     end;
 
     property MaximumDeliveryAttempts: Integer := 5;
@@ -272,7 +271,7 @@ type
 
     var fMessages := new Dictionary<Guid,MessageInfo>;
 
-    method KeyPairForChat(aChat: Chat): nullable KeyPair;
+    method KeyPairForChat(aChat: not nullable Chat): nullable KeyPair;
     begin
       result := case aChat.Type of
         ChatType.Private: FindUser(aChat.UserIDs.First(u -> u ≠ UserID)).PublicKey;
@@ -281,7 +280,7 @@ type
       end;
     end;
 
-    method EncryptMessage(aMessage: MessageInfo; aChat: Chat): MessagePayload;
+    method EncryptMessage(aMessage: not nullable MessageInfo; aChat: not nullable Chat): not nullable MessagePayload;
     begin
       var lStringData := aMessage.Payload.ToJsonString(JsonFormat.Minimal);
       var lData := Encoding.UTF8.GetBytes(lStringData);
@@ -309,7 +308,7 @@ type
       //result := DecodeMessage(aPackage.Payload as MessagePayload, lChat);
     //end;
 
-    method DecodeMessage(aPackage: Package; aChat: Chat): MessageInfo;
+    method DecodeMessage(aPackage: not nullable Package; aChat: not nullable Chat): not nullable MessageInfo;
     begin
 
       if aPackage.Payload is not MessagePayload then
@@ -329,7 +328,7 @@ type
       result.Sender := FindSender(aPackage.SenderID);
     end;
 
-    method DecodePayload(aPayload: MessagePayload; aChat: Chat): MessageInfo; public;
+    method DecodePayload(aPayload: not nullable MessagePayload; aChat: not nullable Chat): not nullable MessageInfo; public;
     begin
       result := new MessageInfo;
 
@@ -408,6 +407,24 @@ type
       //Logging.Keys($"result.Payload {result.Payload}");
       //Logging.Keys($"result.SignatureValid {result.SignatureValid}");
 
+    end;
+
+    //
+    //
+    //
+
+    method EncryptAttachment(aAttachment: not nullable JsonPayloadWithAttachment; aChat: not nullable Chat): not nullable JsonPayloadWithAttachment;
+    begin
+      var lKeyPair := KeyPairForChat(aChat);
+      result := new JsonPayloadWithAttachment;
+      result.SetEncryptedDataWithPublicKey(aAttachment.Bytes, lKeyPair);
+      result.Json["chatId"] := aChat.ChatID.ToString;
+    end;
+
+    method DecryptAttachment(aAttachment: not nullable JsonPayloadWithAttachment; aChat: not nullable Chat): not nullable JsonPayloadWithAttachment;
+    begin
+      var lKeyPair := KeyPairForChat(aChat);
+      result := new JsonPayloadWithAttachment withBytes(aAttachment.GetDecryptedDataWithPrivateKey(lKeyPair));
     end;
 
     //
