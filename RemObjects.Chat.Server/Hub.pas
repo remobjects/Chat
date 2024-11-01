@@ -121,7 +121,7 @@ type
     [ToString]
     method ToString: String; override;
     begin
-      result := $"Message from {SenderID} to {ChatID}. {length((OriginalPackage.Payload as MessagePayload).Message)} bytes."
+      result := $"Message from {SenderID} to {ChatID}. {length((OriginalPackage.Payload as MessagePayload).Data)} bytes."
     end;
 
   end;

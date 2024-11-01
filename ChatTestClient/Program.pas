@@ -23,46 +23,47 @@ type
       var d := File.ReadBytes("/Users/mh/Downloads/Bestelling controleren - Veilig afrekenen.pdf");
       var k := KeyPair.Generate(KeyType.RSA);
 
-      var a := new JsonPayloadWithAttachment withJson(m, d);
+      //var a := new JsonPayloadWithAttachment withJson(m, d);
 
-      Log($"a.Data  {Convert.ToAsciiString(a.Data)}");
-      Log($"a.Data  {Convert.ToHexString(a.Data)}");
-      Log($"a.Bytes {Convert.ToAsciiString(a.Bytes)}");
-      Log($"a.Bytes {Convert.ToHexString(a.Bytes)}");
+      //Log($"a.Data  {Convert.ToAsciiString(a.Data)}");
+      //Log($"a.Data  {Convert.ToHexString(a.Data)}");
+      //Log($"a.Bytes {Convert.ToAsciiString(a.Bytes)}");
+      //Log($"a.Bytes {Convert.ToHexString(a.Bytes)}");
 
-      var b := new JsonPayloadWithAttachment withBytes(a.Bytes);
+      //var b := new JsonPayloadWithAttachment withBytes(a.Bytes);
 
-      Log($"b.Data  {Convert.ToAsciiString(b.Data)}");
-      Log($"b.Data  {Convert.ToHexString(b.Data)}");
-      Log($"b.Bytes {Convert.ToAsciiString(b.Bytes)}");
-      Log($"b.Bytes {Convert.ToHexString(b.Bytes)}");
-      //Log($"b.Json {b.Json}");
-      //Log($"Convert.ToAsciiString(b.Binary) {Convert.ToAsciiString(b.Binary)}");
-      //Log($"Convert.ToHexString(b.Binary)   {Convert.ToHexString(b.Binary)}");
+      //Log($"b.Data  {Convert.ToAsciiString(b.Data)}");
+      //Log($"b.Data  {Convert.ToHexString(b.Data)}");
+      //Log($"b.Bytes {Convert.ToAsciiString(b.Bytes)}");
+      //Log($"b.Bytes {Convert.ToHexString(b.Bytes)}");
+      ////Log($"b.Json {b.Json}");
+      ////Log($"Convert.ToAsciiString(b.Binary) {Convert.ToAsciiString(b.Binary)}");
+      ////Log($"Convert.ToHexString(b.Binary)   {Convert.ToHexString(b.Binary)}");
 
 
-      var c := new JsonPayloadWithAttachment;
-      Log($"Convert.ToAsciiString(b.Payload) {Convert.ToAsciiString(b.Bytes)}");
-      c.SetEncryptedDataWithPublicKey(b.Bytes, k);
-      Log($"c.Json {c.Json}");
-      Log($"c.Data    {Convert.ToAsciiString(c.Data)}");
-      Log($"c.Data    {Convert.ToHexString(c.Data)}");
-      Log($"c.Bytes   {Convert.ToAsciiString(c.Bytes)}");
-      Log($"c.Bytes   {Convert.ToHexString(c.Bytes)}");
+      //var c := new JsonPayloadWithAttachment;
+      //Log($"Convert.ToAsciiString(b.Payload) {Convert.ToAsciiString(b.Bytes)}");
+      //c.SetEncryptedDataWithPublicKey(b.Bytes, k);
+      //Log($"c.Json {c.Json}");
+      //Log($"c.Data    {Convert.ToAsciiString(c.Data)}");
+      //Log($"c.Data    {Convert.ToHexString(c.Data)}");
+      //Log($"c.Bytes   {Convert.ToAsciiString(c.Bytes)}");
+      //Log($"c.Bytes   {Convert.ToHexString(c.Bytes)}");
 
-      var f := c.GetDecryptedDataWithPrivateKey(k);
-      Log($"Convert.ToAsciiString(f) {Convert.ToAsciiString(f)}");
-      Log($"Convert.ToHexString(f)   {Convert.ToHexString(f)}");
-
-      //var p := new MessagePayload;
-      //p.SetEncryptedDataWithPublicKey(Encoding.UTF8.GetBytes(m.ToJsonString), k);
-      //Log($"p {p}");
-
-      //var f := p.GetDecryptedDataWithPrivateKey(k);
+      //var f := c.GetDecryptedDataWithPrivateKey(k);
       //Log($"Convert.ToAsciiString(f) {Convert.ToAsciiString(f)}");
       //Log($"Convert.ToHexString(f)   {Convert.ToHexString(f)}");
-      //var j := JsonDocument.FromString(Encoding.UTF8.GetString(f));
-      //Log($"j {j}");
+
+      var p := new MessagePayload;
+      p.SetEncryptedDataWithPublicKey(Encoding.UTF8.GetBytes(m.ToJsonString), k);
+      Log($"p {p}");
+      Log($"p.Bytes {Convert.ToAsciiString(p.Bytes)}");
+
+      var f := p.GetDecryptedDataWithPrivateKey(k);
+      Log($"Convert.ToAsciiString(f) {Convert.ToAsciiString(f)}");
+      Log($"Convert.ToHexString(f)   {Convert.ToHexString(f)}");
+      var j := JsonDocument.FromString(Encoding.UTF8.GetString(f));
+      Log($"j {j}");
 
 
 

@@ -38,7 +38,7 @@ type
       lWriter.WriteUInt8(if assigned(Expiration) then 1 else 0);
       if assigned(Expiration) then
         lWriter.WriteDouble(Expiration.ToOADate);
-      lWriter.WriteByteArray(Payload.Data);
+      lWriter.WriteByteArray(Payload.Bytes);
       result := lBinary.ToArray;
     end;
 

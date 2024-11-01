@@ -44,7 +44,6 @@ type
       end;
     end;
 
-
     property Date: DateTime read begin
       DateTime.TryParseISO8601(Json["date"]);
     end

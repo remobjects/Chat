@@ -5,6 +5,7 @@ uses
 
 type
   Payload = public abstract class
+  public
 
     constructor; empty;
 
@@ -78,7 +79,6 @@ type
         end
         else begin
           var lKey := SymmetricKey.Generate(KeyType.AES);
-          Log($"Generated Key {Convert.ToHexString(lKey.GetKey)}");
           Key := aKeyPair.EncryptWithPublicKey(lKey.GetKey);
 
           //https://git.remobjects.com/remobjects/elements/-/issues/27041
@@ -86,11 +86,7 @@ type
           //Data := lEncrypted[0];
           //IV := aKeyPair.EncryptWithPublicKey(lEncrypted[1]);
           Data := lKey.Encrypt(aData, out var lIV);
-          Log($"Generated IV {Convert.ToHexString(lIV)}");
           IV := aKeyPair.EncryptWithPublicKey(lIV);
-
-          Log($"original  {Convert.ToHexString(aData)}");
-          Log($"data      {Convert.ToHexString(Data)}");
 
           Format := "aes+rsa";
         end;
@@ -101,10 +97,12 @@ type
       else begin
         SetUnencryptedData(aData);
       end;
+      //Log($"sending as '{Format}'");
     end;
 
     method GetDecryptedDataWithPrivateKey(aKeyPair: KeyPair): array of Byte;
     begin
+      //Log($"received as '{Format}'");
       if IsEncrypted then begin
 
         if not assigned(aKeyPair) or not aKeyPair.HasPrivateKey then
@@ -116,12 +114,8 @@ type
             end;
           "aes+rsa": begin
             var lIV := aKeyPair.DecryptWithPrivateKey(IV);
-            Log($"Read IV {Convert.ToHexString(lIV)}");
             var lKey := aKeyPair.DecryptWithPrivateKey(Key);
-            Log($"Read Key {Convert.ToHexString(lKey)}");
             result := new SymmetricKey withKey(lKey).Decrypt(Data, lIV);
-            Log($"data      {Convert.ToHexString(Data)}");
-            Log($"decrypted {Convert.ToHexString(result)}");
           end;
         end;
 
@@ -164,6 +158,10 @@ type
     begin
       Json := coalesce(aJson, JsonDocument.CreateObject);
     end;
+
+    property Bytes: array of Byte read Encoding.UTF8.GetBytes(Json.ToJsonString(JsonFormat.Minimal)) write begin
+      Json := JsonDocument.FromString(Encoding.UTF8.GetString(value));
+    end; override;
 
     property Json: JsonNode;
 
