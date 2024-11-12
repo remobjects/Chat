@@ -113,7 +113,7 @@ type
       Name := aName;
     end;
 
-    constructor(aID: not nullable Guid; aUserIDs: nullable List<Guid>; aName: not nullable String; aKeyPair: KeyPair);
+    constructor(aID: not nullable Guid; aUserIDs: nullable List<Guid>; aName: not nullable String; aKeyPair: nullable KeyPair);
     begin
       constructor(aID, aUserIDs, aName);
       KeyPair := aKeyPair;

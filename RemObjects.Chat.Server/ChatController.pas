@@ -22,7 +22,7 @@ type
       result := lChat as not nullable;
     end;
 
-    method CreateGroupChat(aName: nullable String; aUsers: not nullable array of not nullable Guid; aKeyPair: KeyPair): not nullable ChatInfo;
+    method CreateGroupChat(aName: nullable String; aUsers: not nullable array of not nullable Guid; aKeyPair: nullable KeyPair := nil): not nullable ChatInfo;
     begin
       result := new GroupChatInfo(Guid.NewGuid, aUsers.ToList as not nullable, aName, aKeyPair);
       ChatManager.ActiveChatManager.AddChat(result);
