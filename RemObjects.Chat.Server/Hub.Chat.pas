@@ -11,16 +11,16 @@ type
     constructor(aHub: not nullable Hub; aChatInfo: not nullable ChatInfo);
     begin
       Hub := aHub;
-      ChatID := aChatInfo.ID;
-      UserIDs := aChatInfo.UserIDs;
+      Chat := aChatInfo;
       DeliveryNotifications := aChatInfo.DeliveryNotifications
     end;
 
     property Hub: weak not nullable Hub;
-    property ChatID: not nullable Guid;
     property DeliveryNotifications: Boolean;
 
-    property UserIDs: ImmutableList<Guid>;
+    property Chat: ChatInfo;
+    property ChatID: not nullable Guid read Chat.ID;
+    property UserIDs: ImmutableList<Guid> read Chat.UserIDs;
 
     method CreateMessage(aPackage: not nullable Package): not nullable HubMessage;
     begin
@@ -33,7 +33,7 @@ type
     method DeliverMessage(aMessage: HubMessage) ToAllBut(aAllButUserID: nullable Guid := nil);
     begin
       var lPackage := aMessage.OriginalPackage;
-      for each u in UserIDs do begin
+      for each u in Chat.UserIDs do begin
         if u ≠ aAllButUserID then try
           Hub.FindClient(u).Send(lPackage);
         except
